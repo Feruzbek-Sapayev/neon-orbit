@@ -1,0 +1,1675 @@
+<title>Neon Orbit</title>
+<style>
+  :root{
+    --void:#05060d;
+    --void-2:#0b0f1e;
+    --panel:rgba(13,17,34,.72);
+    --accent:#9d7bff;
+    --accent-2:#24ffe0;
+    --danger:#ff3366;
+    --gold:#ffdd3d;
+    --text:#eef0fb;
+    --muted:#8992b8;
+  }
+  *{box-sizing:border-box;}
+  body{
+    background:var(--void);
+    color:var(--text);
+    font-family:'Rajdhani',sans-serif;
+    overflow:hidden;
+    height:100vh;
+    margin:0;
+  }
+  #app{
+    position:relative;
+    width:100%;
+    height:100%;
+    min-height:560px;
+  }
+  canvas{display:block;}
+
+  .glow-title{
+    font-family:'Orbitron',sans-serif;
+    letter-spacing:.06em;
+    text-shadow:0 0 18px rgba(139,107,255,.65), 0 0 46px rgba(47,230,200,.25);
+  }
+
+  /* ---------- HUD ---------- */
+  #hud{
+    position:absolute; inset:0;
+    pointer-events:none;
+    display:flex; flex-direction:column; justify-content:space-between;
+    padding:calc(env(safe-area-inset-top,0px) + 14px) 18px calc(env(safe-area-inset-bottom,0px) + 14px);
+    opacity:0; transition:opacity .35s ease;
+  }
+  #hud.live{opacity:1;}
+  .hud-top{
+    display:flex; justify-content:space-between; align-items:flex-start; gap:12px; flex-wrap:wrap;
+  }
+  .stat-block{
+    background:var(--panel);
+    border:1px solid rgba(139,107,255,.28);
+    border-radius:12px;
+    padding:8px 16px;
+    backdrop-filter:blur(10px);
+    min-width:120px;
+  }
+  .stat-label{
+    font-size:.68rem; text-transform:uppercase; letter-spacing:.14em; color:var(--muted);
+  }
+  .stat-value{
+    font-family:'Orbitron',sans-serif; font-size:1.35rem; font-variant-numeric:tabular-nums;
+    color:var(--accent-2); line-height:1.3;
+  }
+  #lives{
+    display:flex; gap:6px; font-size:1.1rem; justify-content:flex-end; margin-bottom:4px;
+  }
+  .heart{color:var(--danger); filter:drop-shadow(0 0 6px rgba(255,51,102,.7)); transition:opacity .25s, transform .25s;}
+  .heart.lost{opacity:.18; transform:scale(.75);}
+
+  .hud-bottom{display:flex; justify-content:center;}
+  #speedbar{
+    width:min(340px,70vw); height:6px; border-radius:4px; background:rgba(255,255,255,.08);
+    overflow:hidden; border:1px solid rgba(139,107,255,.25);
+  }
+  #speedfill{
+    height:100%; width:20%;
+    background:linear-gradient(90deg,var(--accent-2),var(--accent));
+    box-shadow:0 0 10px var(--accent-2);
+    transition:width .25s ease;
+  }
+
+  /* ---------- overlays ---------- */
+  .overlay{
+    position:absolute; inset:0;
+    display:flex; align-items:center; justify-content:center;
+    padding:24px;
+    background:radial-gradient(ellipse at 50% 30%, rgba(139,107,255,.14), transparent 60%), rgba(4,5,11,.55);
+    backdrop-filter:blur(6px);
+    transition:opacity .4s ease, visibility .4s;
+  }
+  .overlay.hidden{opacity:0; visibility:hidden; pointer-events:none;}
+  .card{
+    width:min(440px,92vw);
+    background:linear-gradient(180deg, rgba(19,22,42,.92), rgba(10,12,24,.94));
+    border:1px solid rgba(139,107,255,.35);
+    border-radius:20px;
+    padding:32px 28px 26px;
+    text-align:center;
+    box-shadow:0 30px 70px rgba(0,0,0,.55), inset 0 1px 0 rgba(255,255,255,.05);
+    max-height:88vh; overflow-y:auto;
+  }
+  .eyebrow{
+    font-size:.72rem; letter-spacing:.32em; text-transform:uppercase; color:var(--accent-2);
+    margin:0 0 6px;
+  }
+  h1.title{
+    font-size:clamp(2rem,7vw,2.7rem); margin:0 0 26px; color:var(--text);
+  }
+  .subtitle{color:var(--muted); font-size:1rem; margin:0 0 22px; line-height:1.5;}
+
+  .controls-legend{
+    display:flex; justify-content:center; gap:18px; margin:0 0 24px; flex-wrap:wrap;
+  }
+  .legend-item{display:flex; flex-direction:column; align-items:center; gap:6px; font-size:.72rem; color:var(--muted); width:64px;}
+  .key{
+    font-family:'Orbitron',sans-serif; font-size:.78rem; line-height:1.25;
+    background:rgba(139,107,255,.14); border:1px solid rgba(139,107,255,.4);
+    border-radius:8px; width:100%; min-height:44px; padding:4px;
+    color:var(--text);
+    display:flex; align-items:center; justify-content:center; text-align:center;
+  }
+
+  .obst-legend{
+    display:flex; flex-direction:column; gap:6px;
+    text-align:left; margin:0 0 20px;
+    padding:12px 14px; border-radius:12px;
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.07);
+  }
+  .obst-item{ display:flex; align-items:center; gap:8px; font-size:.78rem; color:var(--muted); }
+  .dot{ width:9px; height:9px; border-radius:50%; flex:none; box-shadow:0 0 8px currentColor; }
+
+  .coin-row{
+    display:flex; align-items:center; justify-content:space-between; gap:10px;
+    margin:0 0 18px;
+  }
+  .coin-badge{
+    display:inline-flex; align-items:center; gap:7px;
+    font-family:'Orbitron',sans-serif; font-size:.82rem; color:var(--gold);
+    background:rgba(255,207,92,.08); border:1px solid rgba(255,207,92,.3);
+    border-radius:10px; padding:8px 14px;
+  }
+  .coin-dot{
+    width:12px; height:12px; border-radius:50%; flex:none;
+    background:radial-gradient(circle at 35% 30%, #fff6d8, var(--gold) 65%, #b8811a 100%);
+    box-shadow:0 0 8px rgba(255,207,92,.8);
+  }
+  .shop-btn{
+    font-family:'Orbitron',sans-serif; font-size:.72rem; letter-spacing:.06em;
+    background:rgba(139,107,255,.14); color:var(--text);
+    border:1px solid rgba(139,107,255,.45); border-radius:10px;
+    padding:9px 16px; cursor:pointer;
+  }
+  .shop-btn:hover{ background:rgba(139,107,255,.28); }
+
+  .shop-card{ width:min(560px,94vw); }
+
+  .ad-card{ width:min(380px,92vw); }
+  .ad-slot{
+    background:rgba(255,255,255,.03); border:1px dashed rgba(255,255,255,.18);
+    border-radius:14px; padding:32px 18px; margin:6px 0 20px;
+    display:flex; flex-direction:column; align-items:center; gap:8px;
+  }
+  .ad-icon{ font-size:2.2rem; opacity:.6; }
+  .ad-line{ font-size:.9rem; color:var(--text); margin:0; }
+  .ad-line-sub{ font-size:.72rem; color:var(--muted); }
+  #adSkipBtn[disabled]{ background:rgba(255,255,255,.08); color:var(--muted); cursor:default; }
+  .skin-grid{
+    display:grid; grid-template-columns:repeat(auto-fit,minmax(150px,1fr));
+    gap:12px; text-align:left;
+  }
+  .skin-card{
+    background:rgba(255,255,255,.03); border:1px solid rgba(255,255,255,.09);
+    border-radius:14px; padding:14px; display:flex; flex-direction:column; gap:8px;
+    align-items:center; text-align:center;
+  }
+  .skin-swatch{
+    width:56px; height:56px; border-radius:50%; flex:none;
+    box-shadow:inset -6px -8px 14px rgba(0,0,0,.35), 0 0 16px rgba(0,0,0,.3);
+  }
+  .skin-name{ font-family:'Orbitron',sans-serif; font-size:.78rem; color:var(--text); }
+  .skin-price{ font-size:.76rem; color:var(--gold); min-height:1.1em; }
+  .skin-buy{ margin-top:auto; }
+  .skin-buy{
+    width:100%; font-family:'Rajdhani',sans-serif; font-weight:700; font-size:.78rem;
+    letter-spacing:.05em; border-radius:9px; padding:9px 0; cursor:pointer; border:none;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2)); color:#0a0b16;
+  }
+  .skin-buy[disabled]{
+    background:rgba(255,255,255,.08); color:var(--muted); cursor:default;
+  }
+  .skin-buy.owned{ background:rgba(47,230,200,.18); color:var(--accent-2); }
+  .skin-buy.selected{ background:rgba(47,230,200,.85); color:#04261f; }
+
+  button.cta{
+    font-family:'Orbitron',sans-serif; font-size:1rem; letter-spacing:.06em;
+    background:linear-gradient(135deg,var(--accent),var(--accent-2));
+    color:#0a0b16; border:none; border-radius:12px;
+    padding:14px 30px; cursor:pointer;
+    box-shadow:0 12px 28px rgba(139,107,255,.35);
+    transition:transform .15s ease, box-shadow .15s ease;
+    width:100%;
+  }
+  button.cta:hover{transform:translateY(-2px); box-shadow:0 16px 34px rgba(139,107,255,.5);}
+  button.cta:active{transform:translateY(0);}
+
+  .score-row{
+    display:flex; justify-content:space-between; align-items:baseline;
+    padding:10px 4px; border-bottom:1px solid rgba(255,255,255,.08);
+  }
+  .score-row:last-of-type{border-bottom:none;}
+  .score-row .label{color:var(--muted); font-size:.85rem; letter-spacing:.08em; text-transform:uppercase;}
+  .score-row .value{font-family:'Orbitron',sans-serif; font-size:1.4rem; color:var(--text); font-variant-numeric:tabular-nums;}
+  .record-tag{
+    display:inline-block; margin:2px 0 18px; font-family:'Orbitron',sans-serif;
+    font-size:.78rem; color:var(--gold); letter-spacing:.1em;
+    text-shadow:0 0 14px rgba(255,207,92,.7);
+  }
+
+  /* ---------- touch controls ---------- */
+  #touchpad{
+    position:absolute; left:0; right:0; bottom:0;
+    padding-bottom:env(safe-area-inset-bottom,0px);
+    display:flex; justify-content:space-between; padding-left:16px; padding-right:16px;
+    pointer-events:none; opacity:0; transition:opacity .35s;
+  }
+  #touchpad.live{opacity:1;}
+  .tbtn{
+    pointer-events:auto;
+    width:58px; height:58px; border-radius:50%;
+    background:rgba(139,107,255,.16); border:1px solid rgba(139,107,255,.45);
+    color:var(--text); font-size:1.4rem; display:flex; align-items:center; justify-content:center;
+    -webkit-tap-highlight-color:transparent; user-select:none; margin-bottom:14px;
+    backdrop-filter:blur(6px);
+  }
+  .tbtn:active{background:rgba(139,107,255,.4);}
+  #jumpBtn{position:absolute; right:16px; bottom:calc(env(safe-area-inset-bottom,0px) + 82px);}
+  #fallBtn{position:absolute; right:16px; bottom:calc(env(safe-area-inset-bottom,0px) + 14px);}
+  .side-btns{display:flex; gap:10px;}
+
+  #topControls{
+    position:absolute; z-index:5;
+    top:calc(env(safe-area-inset-top,0px) + 14px); left:50%; transform:translateX(-50%);
+    display:flex; gap:8px;
+  }
+  .icon-btn{
+    width:38px; height:38px; display:flex; align-items:center; justify-content:center;
+    background:var(--panel); border:1px solid rgba(139,107,255,.28); border-radius:50%;
+    font-size:1.05rem; line-height:1; color:var(--muted); cursor:pointer; backdrop-filter:blur(10px);
+    -webkit-tap-highlight-color:transparent;
+  }
+  .icon-btn:hover{ color:var(--accent-2); border-color:rgba(47,230,200,.4); }
+  #langBtn{
+    width:auto; padding:0 13px;
+    font-family:'Orbitron',sans-serif; font-size:.68rem; letter-spacing:.05em; font-weight:700;
+  }
+  #pauseBtn{ display:none; }
+  #pauseBtn.live{ display:flex; }
+
+  .flash{
+    position:absolute; inset:0; background:var(--danger); opacity:0; pointer-events:none;
+    transition:opacity .08s ease-out;
+  }
+  .flash.hit{opacity:.35; transition:opacity .02s;}
+
+  @media (max-width:520px){
+    .controls-legend{display:none;}
+    .card{padding:26px 18px 22px;}
+  }
+</style>
+
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@600;700;900&family=Rajdhani:wght@500;600;700&display=swap" rel="stylesheet">
+
+<div id="app">
+  <div class="flash" id="flash"></div>
+  <div id="topControls">
+    <div id="muteBtn" class="icon-btn">&#128266;</div>
+    <div id="langBtn" class="icon-btn lang-btn">UZ</div>
+    <div id="pauseBtn" class="icon-btn">&#9208;</div>
+  </div>
+
+  <div id="hud">
+    <div class="hud-top">
+      <div class="stat-block">
+        <div class="stat-label" data-i18n="hud_distance">Masofa</div>
+        <div class="stat-value" id="distanceVal">0 m</div>
+      </div>
+      <div class="stat-block" style="text-align:right;">
+        <div id="lives"></div>
+        <div class="stat-label" data-i18n="hud_score">Ochko</div>
+        <div class="stat-value" id="scoreVal">0</div>
+      </div>
+    </div>
+    <div class="hud-bottom">
+      <div id="speedbar"><div id="speedfill"></div></div>
+    </div>
+  </div>
+
+  <div id="touchpad">
+    <div class="side-btns">
+      <div class="tbtn" id="leftBtn">&#9664;</div>
+      <div class="tbtn" id="rightBtn">&#9654;</div>
+    </div>
+  </div>
+  <div class="tbtn" id="jumpBtn" style="position:absolute;">&#9650;</div>
+  <div class="tbtn" id="fallBtn" style="position:absolute;">&#9660;</div>
+
+  <div class="overlay" id="startOverlay">
+    <div class="card">
+      <p class="eyebrow" data-i18n="eyebrow">Onlayn arkada &middot; 3D</p>
+      <h1 class="title glow-title">NEON ORBIT</h1>
+      <div class="controls-legend">
+        <div class="legend-item"><div class="key">&#9664; / A</div><span data-i18n="ctrl_left">Chapga</span></div>
+        <div class="legend-item"><div class="key">&#9654; / D</div><span data-i18n="ctrl_right">O'ngga</span></div>
+        <div class="legend-item"><div class="key">&#9650; / Space</div><span data-i18n="ctrl_jump">Sakrash</span></div>
+        <div class="legend-item"><div class="key">&#9660; / S</div><span data-i18n="ctrl_fall">Tez tushish</span></div>
+      </div>
+      <div class="obst-legend">
+        <div class="obst-item"><span class="dot" style="background:#ff4d6d;"></span><span data-i18n="obst_mine">Mina &mdash; yonlab o't yoki sakra</span></div>
+        <div class="obst-item"><span class="dot" style="background:#b83dff;"></span><span data-i18n="obst_spike">Ustun &mdash; juda baland, faqat yonlab o't</span></div>
+        <div class="obst-item"><span class="dot" style="background:#ffcf5c;"></span><span data-i18n="obst_gate">Darvoza &mdash; faqat sakrab o't</span></div>
+        <div class="obst-item"><span class="dot" style="background:#ff9d3d;"></span><span data-i18n="obst_drone">Dron &mdash; harakatlanadi, ehtiyot bo'l</span></div>
+      </div>
+      <div class="coin-row">
+        <span class="coin-badge"><span class="coin-dot"></span><span id="coinTotalStart">0</span> <span data-i18n="coin_suffix">tanga</span></span>
+        <button class="shop-btn" id="openShopBtn" data-i18n="shop_btn">DO'KON</button>
+      </div>
+      <p class="record-tag" id="bestTagStart" style="display:none;"></p>
+      <button class="cta" id="startBtn" data-i18n="start_btn">UCHISHNI BOSHLASH</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="overOverlay">
+    <div class="card">
+      <p class="eyebrow" id="overEyebrow" data-i18n="over_eyebrow">O'yin yakunlandi</p>
+      <h1 class="title glow-title" style="font-size:clamp(1.5rem,6vw,2rem); margin-bottom:6px;" data-i18n="over_title">TO'QNASHUV</h1>
+      <p class="record-tag" id="newRecordTag" style="display:none;">&#10022; <span data-i18n="new_record">YANGI OCHKO REKORDI</span> &#10022;</p>
+      <div style="margin:6px 0 22px;">
+        <div class="score-row"><span class="label" data-i18n="row_distance">Masofa</span><span class="value" id="finalDistance">0 m</span></div>
+        <div class="score-row"><span class="label" data-i18n="row_score">Ochko</span><span class="value" id="finalScore">0</span></div>
+        <div class="score-row"><span class="label" data-i18n="row_best">Eng yaxshi ochko</span><span class="value" id="finalBest">0</span></div>
+        <div class="score-row"><span class="label" data-i18n="row_coins">Tanga topildi</span><span class="value" id="finalCoinsGained">+0</span></div>
+      </div>
+      <div class="coin-row">
+        <span class="coin-badge"><span class="coin-dot"></span><span id="coinTotalOver">0</span> <span data-i18n="coin_suffix">tanga</span></span>
+        <button class="shop-btn" id="openShopBtn2" data-i18n="shop_btn">DO'KON</button>
+      </div>
+      <button class="cta" id="retryBtn" style="margin-bottom:12px;" data-i18n="retry_btn">QAYTA BOSHLASH</button>
+      <button class="cta" id="overMenuBtn" style="background:transparent; color:var(--muted); box-shadow:none; border:1px solid rgba(255,255,255,.14);" data-i18n="menu_btn">BOSH MENYU</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="adOverlay">
+    <div class="card ad-card">
+      <p class="eyebrow" data-i18n="ad_eyebrow">Reklama</p>
+      <div class="ad-slot">
+        <!-- ============================================================
+             AD SLOT PLACEHOLDER - swap this block for real AdSense/AdMob
+             markup once the game is hosted on your own domain under your
+             own publisher account. Call adDone() to dismiss (see script).
+             ============================================================ -->
+        <div class="ad-icon">&#128226;</div>
+        <p class="ad-line" data-i18n="ad_line1">Bu yerda reklama chiqadi</p>
+        <p class="ad-line ad-line-sub" data-i18n="ad_line2">AdSense ulanganda shu joy almashadi</p>
+      </div>
+      <button class="cta" id="adSkipBtn" disabled></button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="pauseOverlay">
+    <div class="card">
+      <p class="eyebrow" data-i18n="pause_eyebrow">Pauza</p>
+      <h1 class="title glow-title" style="font-size:clamp(1.5rem,6vw,2rem);" data-i18n="pause_title">TO'XTATILDI</h1>
+      <button class="cta" id="resumeBtn" style="margin-bottom:12px;" data-i18n="resume_btn">DAVOM ETTIRISH</button>
+      <button class="cta" id="pauseRetryBtn" style="background:rgba(255,255,255,.08); color:var(--text); box-shadow:none; margin-bottom:12px;" data-i18n="retry_btn">QAYTA BOSHLASH</button>
+      <button class="cta" id="menuBtn" style="background:transparent; color:var(--muted); box-shadow:none; border:1px solid rgba(255,255,255,.14);" data-i18n="menu_btn">BOSH MENYU</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="shopOverlay">
+    <div class="card shop-card">
+      <p class="eyebrow" data-i18n="shop_eyebrow">Do'kon</p>
+      <h1 class="title glow-title" style="font-size:clamp(1.4rem,6vw,1.9rem);" data-i18n="shop_title">SHARLAR TO'PLAMI</h1>
+      <div class="coin-row" style="justify-content:center; margin-bottom:16px;">
+        <span class="coin-badge"><span class="coin-dot"></span><span id="coinTotalShop">0</span> <span data-i18n="coin_suffix">tanga</span></span>
+      </div>
+      <div class="skin-grid" id="skinGrid"></div>
+      <button class="cta" id="closeShopBtn" style="margin-top:20px;" data-i18n="close_btn">ORQAGA</button>
+    </div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function(){
+  "use strict";
+
+  /* ===================== persistence ===================== */
+  var STORAGE_KEY = "neon-orbit-best";
+  function loadBest(){
+    try{ return parseInt(localStorage.getItem(STORAGE_KEY) || "0", 10) || 0; }catch(e){ return 0; }
+  }
+  function saveBest(v){
+    try{ localStorage.setItem(STORAGE_KEY, String(v)); }catch(e){}
+  }
+  var best = loadBest();
+
+  var COINS_KEY = "neon-orbit-coins";
+  var OWNED_KEY = "neon-orbit-owned";
+  var SKIN_KEY = "neon-orbit-skin";
+  function loadCoins(){ try{ return parseInt(localStorage.getItem(COINS_KEY) || "0", 10) || 0; }catch(e){ return 0; } }
+  function saveCoins(v){ try{ localStorage.setItem(COINS_KEY, String(v)); }catch(e){} }
+  function loadOwned(){
+    try{
+      var raw = JSON.parse(localStorage.getItem(OWNED_KEY) || "[\"neon\"]");
+      return Array.isArray(raw) && raw.length ? raw : ["neon"];
+    }catch(e){ return ["neon"]; }
+  }
+  function saveOwned(list){ try{ localStorage.setItem(OWNED_KEY, JSON.stringify(list)); }catch(e){} }
+  function loadSkin(){ try{ return localStorage.getItem(SKIN_KEY) || "neon"; }catch(e){ return "neon"; } }
+  function saveSkin(id){ try{ localStorage.setItem(SKIN_KEY, id); }catch(e){} }
+
+  var coins = loadCoins();
+  var ownedSkins = loadOwned();
+  var selectedSkin = loadSkin();
+
+  /* ===================== i18n ===================== */
+  var LANGS = ["uz", "en", "ru"];
+  var I18N = {
+    uz: {
+      eyebrow: "Onlayn arkada - 3D",
+      subtitle: "Yorug'lik tunnelida uchib bor: yo'lakni almashtir, to'siqlardan sakrab o't, tangalarni yig'. Tangalarga do'kondan yangi sharlar sotib ol! Tezlik doim oshib boradi - qancha uzoqqa borasan?",
+      ctrl_left: "Chapga", ctrl_right: "O'ngga", ctrl_jump: "Sakrash", ctrl_fall: "Tez tushish",
+      obst_mine: "Mina - yonlab o't yoki sakra",
+      obst_spike: "Ustun - juda baland, faqat yonlab o't",
+      obst_gate: "Darvoza - faqat sakrab o't",
+      obst_drone: "Dron - harakatlanadi, ehtiyot bo'l",
+      coin_suffix: "tanga", shop_btn: "DO'KON", start_btn: "UCHISHNI BOSHLASH",
+      best_score_label: "Eng yaxshi ochko",
+      hud_distance: "Masofa", hud_score: "Ochko", distance_unit: "m",
+      over_eyebrow: "O'yin yakunlandi", over_title: "TO'QNASHUV", new_record: "YANGI OCHKO REKORDI",
+      row_distance: "Masofa", row_score: "Ochko", row_best: "Eng yaxshi ochko", row_coins: "Tanga topildi",
+      retry_btn: "QAYTA BOSHLASH",
+      shop_eyebrow: "Do'kon", shop_title: "SHARLAR TO'PLAMI", close_btn: "ORQAGA",
+      buy_btn: "SOTIB OLISH", select_btn: "TANLASH", selected_btn: "TANLANGAN",
+      skin_neon: "Neon Orbit", skin_football: "Futbol to'pi", skin_basketball: "Basketbol to'pi",
+      skin_ice: "Muz shari", skin_fire: "Olov shari", skin_earth: "Sayyora Yer", skin_saturn: "Halqali sayyora",
+      pause_eyebrow: "Pauza", pause_title: "TO'XTATILDI", resume_btn: "DAVOM ETTIRISH", menu_btn: "BOSH MENYU",
+      ad_eyebrow: "Reklama", ad_line1: "Bu yerda reklama chiqadi", ad_line2: "AdSense ulanganda shu joy almashadi",
+      ad_skip: "O'TKAZIB YUBORISH", ad_continue: "DAVOM ETISH"
+    },
+    en: {
+      eyebrow: "Online arcade - 3D",
+      subtitle: "Fly through the tunnel of light: switch lanes, jump over obstacles, collect coins. Spend coins in the shop on new balls! Speed keeps climbing - how far can you go?",
+      ctrl_left: "Left", ctrl_right: "Right", ctrl_jump: "Jump", ctrl_fall: "Fast fall",
+      obst_mine: "Mine - dodge sideways or jump",
+      obst_spike: "Spire - too tall, dodge sideways only",
+      obst_gate: "Gate - jump over only",
+      obst_drone: "Drone - moves, be careful",
+      coin_suffix: "coins", shop_btn: "SHOP", start_btn: "START FLYING",
+      best_score_label: "Best score",
+      hud_distance: "Distance", hud_score: "Score", distance_unit: "m",
+      over_eyebrow: "Game over", over_title: "CRASH", new_record: "NEW HIGH SCORE",
+      row_distance: "Distance", row_score: "Score", row_best: "Best score", row_coins: "Coins earned",
+      retry_btn: "RETRY",
+      shop_eyebrow: "Shop", shop_title: "BALL COLLECTION", close_btn: "BACK",
+      buy_btn: "BUY", select_btn: "SELECT", selected_btn: "SELECTED",
+      skin_neon: "Neon Orbit", skin_football: "Soccer Ball", skin_basketball: "Basketball",
+      skin_ice: "Ice Ball", skin_fire: "Fire Ball", skin_earth: "Planet Earth", skin_saturn: "Ringed Planet",
+      pause_eyebrow: "Paused", pause_title: "PAUSED", resume_btn: "RESUME", menu_btn: "MAIN MENU",
+      ad_eyebrow: "Advertisement", ad_line1: "Your ad will appear here", ad_line2: "Swap in once AdSense is connected",
+      ad_skip: "SKIP", ad_continue: "CONTINUE"
+    },
+    ru: {
+      eyebrow: "Онлайн-аркада - 3D",
+      subtitle: "Лети сквозь световой тоннель: меняй полосы, перепрыгивай препятствия, собирай монеты. Трать монеты в магазине на новые шары! Скорость постоянно растёт - как далеко ты доберёшься?",
+      ctrl_left: "Влево", ctrl_right: "Вправо", ctrl_jump: "Прыжок", ctrl_fall: "Быстрое падение",
+      obst_mine: "Мина - обойди сбоку или прыгни",
+      obst_spike: "Шпиль - слишком высокий, только в сторону",
+      obst_gate: "Врата - только прыжком",
+      obst_drone: "Дрон - движется, будь осторожен",
+      coin_suffix: "монет", shop_btn: "МАГАЗИН", start_btn: "НАЧАТЬ ПОЛЁТ",
+      best_score_label: "Лучший счёт",
+      hud_distance: "Дистанция", hud_score: "Очки", distance_unit: "м",
+      over_eyebrow: "Игра окончена", over_title: "СТОЛКНОВЕНИЕ", new_record: "НОВЫЙ РЕКОРД",
+      row_distance: "Дистанция", row_score: "Очки", row_best: "Лучший счёт", row_coins: "Монет заработано",
+      retry_btn: "ЗАНОВО",
+      shop_eyebrow: "Магазин", shop_title: "КОЛЛЕКЦИЯ ШАРОВ", close_btn: "НАЗАД",
+      buy_btn: "КУПИТЬ", select_btn: "ВЫБРАТЬ", selected_btn: "ВЫБРАНО",
+      skin_neon: "Neon Orbit", skin_football: "Футбольный мяч", skin_basketball: "Баскетбольный мяч",
+      skin_ice: "Ледяной шар", skin_fire: "Огненный шар", skin_earth: "Планета Земля", skin_saturn: "Планета с кольцом",
+      pause_eyebrow: "Пауза", pause_title: "ПАУЗА", resume_btn: "ПРОДОЛЖИТЬ", menu_btn: "ГЛАВНОЕ МЕНЮ",
+      ad_eyebrow: "Реклама", ad_line1: "Здесь появится реклама", ad_line2: "Заменится после подключения AdSense",
+      ad_skip: "ПРОПУСТИТЬ", ad_continue: "ПРОДОЛЖИТЬ"
+    }
+  };
+  function detectDeviceLang(){
+    try{
+      var candidates = (navigator.languages && navigator.languages.length) ? navigator.languages : [navigator.language || navigator.userLanguage || "en"];
+      for(var i=0;i<candidates.length;i++){
+        var code = String(candidates[i] || "").toLowerCase().slice(0,2);
+        if(LANGS.indexOf(code) !== -1) return code;
+      }
+    }catch(e){}
+    return "en";
+  }
+  function loadLang(){
+    try{
+      var v = localStorage.getItem("neon-orbit-lang");
+      if(LANGS.indexOf(v) !== -1) return v;
+    }catch(e){}
+    return detectDeviceLang();
+  }
+  function saveLang(v){ try{ localStorage.setItem("neon-orbit-lang", v); }catch(e){} }
+  var lang = loadLang();
+  function t(key){ return (I18N[lang] && I18N[lang][key]) || I18N.uz[key] || key; }
+
+  /* ===================== audio engine ===================== */
+  var actx = null, masterGain = null, sfxBus = null, musicBus = null;
+  function loadMuted(){ try{ return localStorage.getItem("neon-orbit-muted") === "1"; }catch(e){ return false; } }
+  function saveMuted(v){ try{ localStorage.setItem("neon-orbit-muted", v ? "1" : "0"); }catch(e){} }
+  var muted = loadMuted();
+
+  function ac(){
+    if(!actx){
+      try{
+        actx = new (window.AudioContext || window.webkitAudioContext)();
+        masterGain = actx.createGain();
+        masterGain.gain.value = muted ? 0 : 1;
+        masterGain.connect(actx.destination);
+        sfxBus = actx.createGain(); sfxBus.gain.value = 1; sfxBus.connect(masterGain);
+        musicBus = actx.createGain(); musicBus.gain.value = 0.15; musicBus.connect(masterGain);
+      }catch(e){ actx = null; }
+    }
+    return actx;
+  }
+
+  function tone(freq, dur, type, gain, dest, cutoff){
+    var ctx = ac();
+    if(!ctx) return;
+    try{
+      var o = ctx.createOscillator();
+      var f = ctx.createBiquadFilter();
+      var g = ctx.createGain();
+      o.type = type || "sine";
+      o.frequency.value = freq;
+      f.type = "lowpass";
+      f.frequency.value = cutoff || 9000;
+      var t = ctx.currentTime;
+      g.gain.setValueAtTime(0, t);
+      g.gain.linearRampToValueAtTime(gain || 0.06, t + 0.012);
+      g.gain.exponentialRampToValueAtTime(0.0008, t + dur);
+      o.connect(f); f.connect(g); g.connect(dest || sfxBus);
+      o.start(t); o.stop(t + dur + 0.03);
+    }catch(e){}
+  }
+  function beep(freq, dur, type, gain){ tone(freq, dur, type, gain, sfxBus); }
+
+  function noiseBurst(dur, gain, cutoff){
+    var ctx = ac();
+    if(!ctx) return;
+    try{
+      var n = Math.max(1, Math.floor(ctx.sampleRate * dur));
+      var buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      var data = buf.getChannelData(0);
+      for(var i=0;i<n;i++){ data[i] = (Math.random()*2-1) * (1 - i/n); }
+      var src = ctx.createBufferSource(); src.buffer = buf;
+      var filt = ctx.createBiquadFilter(); filt.type = "lowpass"; filt.frequency.value = cutoff || 1200;
+      var g = ctx.createGain(); g.gain.value = gain || 0.12;
+      src.connect(filt); filt.connect(g); g.connect(sfxBus);
+      src.start();
+    }catch(e){}
+  }
+
+  function bell(freq, dur, gain, delay){
+    setTimeout(function(){
+      var ctx = ac();
+      if(!ctx) return;
+      try{
+        var o1 = ctx.createOscillator(), o2 = ctx.createOscillator();
+        var g = ctx.createGain(), g2 = ctx.createGain();
+        o1.type = "sine"; o1.frequency.value = freq;
+        o2.type = "sine"; o2.frequency.value = freq * 2.003; // faint upper shimmer
+        g2.gain.value = 0.28;
+        var t = ctx.currentTime;
+        g.gain.setValueAtTime(0, t);
+        g.gain.linearRampToValueAtTime(gain, t + 0.012);
+        g.gain.exponentialRampToValueAtTime(0.0006, t + dur);
+        o2.connect(g2); g2.connect(g);
+        o1.connect(g); g.connect(sfxBus);
+        o1.start(t); o1.stop(t + dur + 0.05);
+        o2.start(t); o2.stop(t + dur + 0.05);
+      }catch(e){}
+    }, delay * 1000);
+  }
+  function sfxCollect(){
+    bell(1046.50, 0.32, 0.055, 0);     // C6
+    bell(1318.51, 0.36, 0.05, 0.05);   // E6
+    bell(1567.98, 0.42, 0.04, 0.11);   // G6 sparkle
+  }
+  function sfxHit(){
+    beep(90, 0.32, "sawtooth", 0.11);
+    noiseBurst(0.22, 0.22, 900);
+  }
+  function sfxJump(){ beep(520, 0.1, "sine", 0.045); }
+  function sfxGameOver(){
+    beep(220, 0.4, "sawtooth", 0.08);
+    setTimeout(function(){ beep(160, 0.4, "sawtooth", 0.08); }, 150);
+    setTimeout(function(){ beep(110, 0.55, "sawtooth", 0.08); }, 320);
+  }
+
+  /* ---- procedural background score: driving synthwave, i-VI-VII-V ---- */
+  var BPM = 140, STEP_DUR = 60 / BPM / 4; // 16th notes
+  var progression = [
+    { bass: 110.00, arp: [440.00, 523.25, 659.25, 587.33] },  // Am
+    { bass: 87.31,  arp: [349.23, 440.00, 523.25, 466.16] },  // F
+    { bass: 98.00,  arp: [392.00, 493.88, 587.33, 523.25] },  // G
+    { bass: 82.41,  arp: [329.63, 415.30, 493.88, 587.33] }   // E (major - dramatic pull back to Am)
+  ];
+  var musicStep = 0, musicTimer = null;
+
+  function kick(){
+    var ctx = ac();
+    if(!ctx) return;
+    try{
+      var o = ctx.createOscillator(), g = ctx.createGain();
+      var t = ctx.currentTime;
+      o.type = "sine";
+      o.frequency.setValueAtTime(155, t);
+      o.frequency.exponentialRampToValueAtTime(42, t + 0.14);
+      g.gain.setValueAtTime(0.42, t);
+      g.gain.exponentialRampToValueAtTime(0.001, t + 0.22);
+      o.connect(g); g.connect(musicBus);
+      o.start(t); o.stop(t + 0.24);
+    }catch(e){}
+  }
+  function hat(vol){
+    var ctx = ac();
+    if(!ctx) return;
+    try{
+      var n = Math.max(1, Math.floor(ctx.sampleRate * 0.045));
+      var buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      var d = buf.getChannelData(0);
+      for(var i=0;i<n;i++){ d[i] = (Math.random()*2-1) * (1 - i/n); }
+      var src = ctx.createBufferSource(); src.buffer = buf;
+      var f = ctx.createBiquadFilter(); f.type = "highpass"; f.frequency.value = 7500;
+      var g = ctx.createGain(); g.gain.value = vol;
+      src.connect(f); f.connect(g); g.connect(musicBus);
+      src.start();
+    }catch(e){}
+  }
+  function clap(){
+    var ctx = ac();
+    if(!ctx) return;
+    try{
+      var n = Math.max(1, Math.floor(ctx.sampleRate * 0.13));
+      var buf = ctx.createBuffer(1, n, ctx.sampleRate);
+      var d = buf.getChannelData(0);
+      for(var i=0;i<n;i++){ d[i] = (Math.random()*2-1) * (1 - i/n); }
+      var src = ctx.createBufferSource(); src.buffer = buf;
+      var f = ctx.createBiquadFilter(); f.type = "bandpass"; f.frequency.value = 1700; f.Q.value = 1.1;
+      var g = ctx.createGain(); g.gain.value = 0.13;
+      src.connect(f); f.connect(g); g.connect(musicBus);
+      src.start();
+    }catch(e){}
+  }
+
+  function musicTick(){
+    var stepInBar = musicStep % 16;
+    var chordIdx = Math.floor(musicStep / 16) % progression.length;
+    var chord = progression[chordIdx];
+    var intensity = Math.min(1, (speed - BASE_SPEED) / (MAX_SPEED - BASE_SPEED)); // 0..1, ramps with difficulty
+
+    if(stepInBar % 4 === 0) kick();
+    if(stepInBar === 4 || stepInBar === 12) clap();
+    hat(stepInBar % 2 === 0 ? 0.032 : 0.05);
+
+    if(stepInBar % 4 === 0){
+      tone(chord.bass, STEP_DUR*3.2, "sawtooth", 0.12, musicBus, 420 + intensity*2600);
+    }
+    tone(chord.arp[stepInBar % chord.arp.length], STEP_DUR*0.82, "triangle", 0.05 + intensity*0.02, musicBus, 3200 + intensity*2500);
+
+    musicStep++;
+  }
+  function startMusic(){
+    if(!ac() || musicTimer) return;
+    musicBus.gain.cancelScheduledValues(actx.currentTime);
+    musicBus.gain.setValueAtTime(0.17, actx.currentTime);
+    musicStep = 0;
+    musicTick();
+    musicTimer = setInterval(musicTick, STEP_DUR*1000);
+  }
+  function stopMusic(){
+    if(musicBus && actx){
+      musicBus.gain.cancelScheduledValues(actx.currentTime);
+      musicBus.gain.setValueAtTime(musicBus.gain.value, actx.currentTime);
+      musicBus.gain.linearRampToValueAtTime(0.0001, actx.currentTime + 0.5);
+    }
+    if(musicTimer){ clearInterval(musicTimer); musicTimer = null; }
+  }
+
+  function applyMute(){
+    if(masterGain) masterGain.gain.value = muted ? 0 : 1;
+    var btn = document.getElementById("muteBtn");
+    if(btn) btn.innerHTML = muted ? "&#128263;" : "&#128266;";
+  }
+  function toggleMute(){
+    ac();
+    muted = !muted;
+    saveMuted(muted);
+    applyMute();
+  }
+
+  /* ===================== three.js setup ===================== */
+  var app = document.getElementById("app");
+  var scene = new THREE.Scene();
+  scene.fog = new THREE.FogExp2(0x05060d, 0.016);
+
+  var camera = new THREE.PerspectiveCamera(62, app.clientWidth/app.clientHeight, 0.1, 300);
+  camera.position.set(0, 3.4, 6.4);
+
+  var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.setSize(app.clientWidth, app.clientHeight);
+  renderer.setClearColor(0x05060d, 1);
+  app.insertBefore(renderer.domElement, app.firstChild);
+
+  window.addEventListener("resize", function(){
+    camera.aspect = app.clientWidth / app.clientHeight;
+    camera.updateProjectionMatrix();
+    renderer.setSize(app.clientWidth, app.clientHeight);
+  });
+
+  /* lights */
+  scene.add(new THREE.AmbientLight(0x453f70, 1.15));
+  var keyLight = new THREE.PointLight(0x8b6bff, 1.4, 40);
+  keyLight.position.set(0, 6, 4);
+  scene.add(keyLight);
+  var rimLight = new THREE.PointLight(0x2fe6c8, 1.1, 30);
+  rimLight.position.set(0, 2, -6);
+  scene.add(rimLight);
+
+  /* starfield */
+  (function starfield(){
+    var starCanvas = document.createElement("canvas");
+    starCanvas.width = starCanvas.height = 32;
+    var sc = starCanvas.getContext("2d");
+    var grad = sc.createRadialGradient(16,16,0,16,16,16);
+    grad.addColorStop(0, "rgba(255,255,255,1)");
+    grad.addColorStop(0.4, "rgba(200,210,255,0.75)");
+    grad.addColorStop(1, "rgba(200,210,255,0)");
+    sc.fillStyle = grad; sc.fillRect(0,0,32,32);
+    var starTex = new THREE.CanvasTexture(starCanvas);
+
+    var count = 700;
+    var geo = new THREE.BufferGeometry();
+    var pos = new Float32Array(count*3);
+    for(var i=0;i<count;i++){
+      pos[i*3]   = (Math.random()-0.5)*140;
+      pos[i*3+1] = Math.random()*70 - 4;
+      pos[i*3+2] = -40 - Math.random()*220; // always well ahead of the camera, never huge in frame
+    }
+    geo.setAttribute("position", new THREE.BufferAttribute(pos,3));
+    var mat = new THREE.PointsMaterial({ color:0xbfc4ff, size:0.9, map:starTex, transparent:true, opacity:0.75, depthWrite:false });
+    scene.add(new THREE.Points(geo, mat));
+  })();
+
+  var LANES = [-2.4, 0, 2.4];
+
+  /* ground */
+  var groundCanvas = document.createElement("canvas");
+  groundCanvas.width = 128; groundCanvas.height = 512;
+  (function drawGround(){
+    var g = groundCanvas.getContext("2d");
+    g.fillStyle = "#080a17"; g.fillRect(0,0,128,512);
+    g.strokeStyle = "rgba(139,107,255,0.55)"; g.lineWidth = 2;
+    for(var y=0; y<512; y+=32){ g.beginPath(); g.moveTo(0,y); g.lineTo(128,y); g.stroke(); }
+    g.strokeStyle = "rgba(47,230,200,0.35)";
+    g.beginPath(); g.moveTo(64,0); g.lineTo(64,512); g.stroke();
+  })();
+  var groundTex = new THREE.CanvasTexture(groundCanvas);
+  groundTex.wrapS = groundTex.wrapT = THREE.RepeatWrapping;
+  groundTex.repeat.set(6, 40);
+  var ground = new THREE.Mesh(
+    new THREE.PlaneGeometry(24, 400),
+    new THREE.MeshBasicMaterial({ map: groundTex, fog:true })
+  );
+  ground.rotation.x = -Math.PI/2;
+  ground.position.set(0, 0, -170);
+  scene.add(ground);
+
+  /* lane guides */
+  LANES.forEach(function(x){
+    var strip = new THREE.Mesh(
+      new THREE.BoxGeometry(0.08, 0.02, 400),
+      new THREE.MeshBasicMaterial({ color:0x9d7bff, transparent:true, opacity:0.75 })
+    );
+    strip.position.set(x, 0.011, -170);
+    scene.add(strip);
+  });
+
+  /* tunnel rings */
+  var rings = [];
+  var RING_COUNT = 22, RING_SPACING = 9, RING_START = -6;
+  for(var r=0;r<RING_COUNT;r++){
+    var ringMat = new THREE.MeshBasicMaterial({ color: r%3===0 ? 0x2fe6c8 : 0x9d7bff, transparent:true, opacity:0.7, wireframe:true });
+    var ring = new THREE.Mesh(new THREE.TorusGeometry(4.6, 0.045, 6, 20), ringMat);
+    ring.position.z = RING_START - r*RING_SPACING;
+    scene.add(ring);
+    rings.push(ring);
+  }
+
+  /* ===================== ball skins ===================== */
+  function ballCanvas(draw){
+    var c = document.createElement("canvas");
+    c.width = 512; c.height = 256;
+    draw(c.getContext("2d"), c.width, c.height);
+    var tex = new THREE.CanvasTexture(c);
+    tex.wrapS = THREE.RepeatWrapping;
+    tex.anisotropy = 4;
+    tex.previewUrl = c.toDataURL();
+    return tex;
+  }
+  function sphereShade(g,w,h){
+    // subtle top-to-bottom vignette so the baked texture reads as a rounded ball
+    var v = g.createLinearGradient(0,0,0,h);
+    v.addColorStop(0,"rgba(0,0,0,0.22)"); v.addColorStop(0.22,"rgba(0,0,0,0)");
+    v.addColorStop(0.78,"rgba(0,0,0,0)"); v.addColorStop(1,"rgba(0,0,0,0.3)");
+    g.fillStyle = v; g.fillRect(0,0,w,h);
+  }
+  function glossHighlight(g,w,h){
+    var hi = g.createRadialGradient(w*0.32,h*0.28,2,w*0.32,h*0.28,w*0.22);
+    hi.addColorStop(0,"rgba(255,255,255,0.55)"); hi.addColorStop(1,"rgba(255,255,255,0)");
+    g.globalCompositeOperation = "lighter";
+    g.fillStyle = hi; g.fillRect(0,0,w,h);
+    g.globalCompositeOperation = "source-over";
+  }
+
+  var footballTex = ballCanvas(function(g,w,h){
+    g.fillStyle = "#fbfcff"; g.fillRect(0,0,w,h);
+    g.fillStyle = "#12151d";
+    var rows = [{y:h*0.16,n:5,r:22},{y:h*0.42,n:6,r:24},{y:h*0.68,n:6,r:24},{y:h*0.92,n:5,r:20}];
+    rows.forEach(function(row,ri){
+      for(var i=0;i<row.n;i++){
+        var x = ((i + (ri%2?0.5:0)) / row.n) * w + (w/row.n)*0.1;
+        var r = row.r;
+        g.beginPath();
+        for(var k=0;k<5;k++){
+          var a = -Math.PI/2 + k*(Math.PI*2/5);
+          var px = x+Math.cos(a)*r, py = row.y+Math.sin(a)*r*0.92;
+          if(k===0) g.moveTo(px,py); else g.lineTo(px,py);
+        }
+        g.closePath(); g.fill();
+        g.strokeStyle = "rgba(18,21,29,0.4)"; g.lineWidth = 2; g.stroke();
+      }
+    });
+    sphereShade(g,w,h);
+    glossHighlight(g,w,h);
+  });
+
+  var basketballTex = ballCanvas(function(g,w,h){
+    var grad = g.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0,"#ff9a45"); grad.addColorStop(0.5,"#ea7a1f"); grad.addColorStop(1,"#c25e0f");
+    g.fillStyle = grad; g.fillRect(0,0,w,h);
+    // fine leather grain
+    g.fillStyle = "rgba(0,0,0,0.05)";
+    for(var i=0;i<900;i++){ g.fillRect(Math.random()*w, Math.random()*h, 1, 1); }
+    g.strokeStyle = "#241205"; g.lineWidth = 6; g.lineCap = "round";
+    g.beginPath(); g.moveTo(0,h*0.5); g.lineTo(w,h*0.5); g.stroke();
+    for(var s=0;s<4;s++){
+      var xs = (s/4)*w;
+      g.beginPath(); g.moveTo(xs,0); g.lineTo(xs,h); g.stroke();
+    }
+    g.lineWidth = 5;
+    for(var side=-1; side<=1; side+=2){
+      g.beginPath();
+      g.moveTo(w*0.5, 0);
+      g.bezierCurveTo(w*0.5 + side*w*0.26, h*0.22, w*0.5 + side*w*0.26, h*0.78, w*0.5, h);
+      g.stroke();
+    }
+    sphereShade(g,w,h);
+    glossHighlight(g,w,h);
+  });
+
+  function blotches(g,w,h,colors,count,minR,maxR,alpha){
+    g.globalAlpha = alpha;
+    for(var i=0;i<count;i++){
+      var x = Math.random()*w, y = Math.random()*h, r = minR + Math.random()*(maxR-minR);
+      g.fillStyle = colors[(Math.random()*colors.length)|0];
+      g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill();
+    }
+    g.globalAlpha = 1;
+  }
+  function jaggedLine(g,x,y,len,ang,segs){
+    g.beginPath(); g.moveTo(x,y);
+    for(var s=1;s<=segs;s++){
+      ang += (Math.random()-0.5)*0.9;
+      x += Math.cos(ang)*(len/segs); y += Math.sin(ang)*(len/segs);
+      g.lineTo(x,y);
+    }
+    g.stroke();
+  }
+
+  var iceTex = ballCanvas(function(g,w,h){
+    var grad = g.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0,"#eefdff"); grad.addColorStop(0.42,"#a9e4ff"); grad.addColorStop(0.78,"#5aacdf"); grad.addColorStop(1,"#296f9e");
+    g.fillStyle = grad; g.fillRect(0,0,w,h);
+    // internal cloudy density variation, like real ice
+    blotches(g,w,h,["#ffffff","#cdeeff","#7fc4e8"],46,10,30,0.14);
+    // deep frozen crevices
+    g.strokeStyle = "rgba(35,95,135,0.5)"; g.lineWidth = 1.6;
+    for(var i=0;i<10;i++){ jaggedLine(g, Math.random()*w, Math.random()*h, 30+Math.random()*40, Math.random()*Math.PI*2, 4); }
+    // bright surface cracks
+    g.strokeStyle = "rgba(255,255,255,0.9)"; g.lineWidth = 2;
+    for(var j=0;j<20;j++){
+      var x = Math.random()*w, y = Math.random()*h, len = 14+Math.random()*30, ang = Math.random()*Math.PI;
+      g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(ang)*len, y+Math.sin(ang)*len); g.stroke();
+      g.beginPath(); g.moveTo(x,y); g.lineTo(x+Math.cos(ang+2.4)*len*0.5, y+Math.sin(ang+2.4)*len*0.5); g.stroke();
+    }
+    g.fillStyle = "rgba(255,255,255,0.95)";
+    for(var k=0;k<30;k++){ g.beginPath(); g.arc(Math.random()*w, Math.random()*h, 1+Math.random()*2, 0, Math.PI*2); g.fill(); }
+    sphereShade(g,w,h);
+    glossHighlight(g,w,h);
+  });
+
+  var fireTex = ballCanvas(function(g,w,h){
+    g.fillStyle = "#230400"; g.fillRect(0,0,w,h); // cooled crust base
+    g.globalCompositeOperation = "lighter";
+    for(var i=0;i<8;i++){
+      var x = Math.random()*w, y = h*0.5 + (Math.random()-0.5)*h*0.85, r = 34+Math.random()*54;
+      var hg = g.createRadialGradient(x,y,2,x,y,r);
+      hg.addColorStop(0,"#fff6c8"); hg.addColorStop(0.32,"#ffb238"); hg.addColorStop(0.68,"#ff4d00"); hg.addColorStop(1,"rgba(255,40,0,0)");
+      g.fillStyle = hg;
+      g.beginPath(); g.arc(x,y,r,0,Math.PI*2); g.fill();
+    }
+    g.globalCompositeOperation = "source-over";
+    // dark cracked crust lines between the hot spots
+    g.strokeStyle = "rgba(15,2,0,0.55)"; g.lineWidth = 2.2;
+    for(var c=0;c<12;c++){ jaggedLine(g, Math.random()*w, Math.random()*h, 24+Math.random()*36, Math.random()*Math.PI*2, 4); }
+    // rising flame licks off the top
+    for(var f=0;f<24;f++){
+      var fx = Math.random()*w, fy = h*0.5 + (Math.random()-0.5)*h*0.9, len = 18+Math.random()*34;
+      g.strokeStyle = "rgba(255,210,120," + (0.35+Math.random()*0.3) + ")";
+      g.lineWidth = 2 + Math.random()*2;
+      g.beginPath(); g.moveTo(fx,fy); g.quadraticCurveTo(fx+len*0.3, fy-len*0.7, fx+len*0.1, fy-len); g.stroke();
+    }
+    g.fillStyle = "rgba(255,255,255,0.85)";
+    for(var j=0;j<14;j++){ g.beginPath(); g.arc(Math.random()*w, Math.random()*h, 1+Math.random()*1.6, 0, Math.PI*2); g.fill(); }
+    sphereShade(g,w,h);
+  });
+
+  var earthTex = ballCanvas(function(g,w,h){
+    var grad = g.createLinearGradient(0,0,0,h);
+    grad.addColorStop(0,"#2f7fc9"); grad.addColorStop(0.5,"#1c5a9c"); grad.addColorStop(1,"#0f3663");
+    g.fillStyle = grad; g.fillRect(0,0,w,h);
+    function land(colors,count,minR,maxR){
+      for(var i=0;i<count;i++){
+        var cx = Math.random()*w, cy = h*0.12 + Math.random()*h*0.76;
+        var pts = 7 + (Math.random()*4|0);
+        g.fillStyle = colors[(Math.random()*colors.length)|0];
+        g.beginPath();
+        for(var p=0;p<pts;p++){
+          var a = p/pts*Math.PI*2, rr = (minR+Math.random()*(maxR-minR));
+          var px = cx+Math.cos(a)*rr, py = cy+Math.sin(a)*rr*0.7;
+          if(p===0) g.moveTo(px,py); else g.lineTo(px,py);
+        }
+        g.closePath(); g.fill();
+      }
+    }
+    land(["#3f8a3f","#357335"],7,14,30);
+    land(["#7a8f3f","#8a6a3f"],6,7,16);
+    // polar ice caps
+    g.fillStyle = "rgba(255,255,255,0.85)";
+    g.fillRect(0,0,w,h*0.08); g.fillRect(0,h*0.92,w,h*0.08);
+    // clouds
+    blotches(g,w,h,["rgba(255,255,255,0.55)","rgba(255,255,255,0.35)"],26,8,22,1);
+    sphereShade(g,w,h);
+    glossHighlight(g,w,h);
+  });
+
+  var saturnTex = ballCanvas(function(g,w,h){
+    var bands = ["#e9cd97","#d9b473","#c99a52","#efd6a3","#b9863f","#e3c48a","#d2a862"];
+    var y = 0;
+    while(y < h){
+      var bh = 6 + Math.random()*16;
+      g.fillStyle = bands[(Math.random()*bands.length)|0];
+      g.fillRect(0,y,w,bh);
+      y += bh;
+    }
+    g.globalAlpha = 0.12;
+    for(var i=0;i<10;i++){ g.fillStyle="#5a3d15"; g.fillRect(0,Math.random()*h,w,1.5); }
+    g.globalAlpha = 1;
+    sphereShade(g,w,h);
+    glossHighlight(g,w,h);
+  });
+
+  var SKINS = [
+    { id:"neon", name:"Neon Orbit", cost:0, glow:0x2fe6c8, light:0x2fe6c8,
+      build:function(){ return new THREE.MeshStandardMaterial({ color:0x2fe6c8, emissive:0x1de6c0, emissiveIntensity:1.6, roughness:0.2, metalness:0.4 }); },
+      geo:function(){ return new THREE.IcosahedronGeometry(0.42, 1); } },
+    { id:"football", name:"Futbol to'pi", cost:60, glow:0xf4f6fb, light:0xffffff, previewUrl:footballTex.previewUrl,
+      build:function(){ return new THREE.MeshStandardMaterial({ map:footballTex, roughness:0.55, metalness:0.05 }); },
+      geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
+    { id:"basketball", name:"Basketbol to'pi", cost:90, glow:0xff9d3d, light:0xff9d3d, previewUrl:basketballTex.previewUrl,
+      build:function(){ return new THREE.MeshStandardMaterial({ map:basketballTex, roughness:0.6, metalness:0.05 }); },
+      geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
+    { id:"ice", name:"Muz shari", cost:130, glow:0x9fe3ff, light:0x9fe3ff, previewUrl:iceTex.previewUrl,
+      build:function(){ return new THREE.MeshStandardMaterial({ map:iceTex, roughness:0.1, metalness:0.5, emissive:0x4fb8e0, emissiveIntensity:0.8 }); },
+      geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
+    { id:"fire", name:"Olov shari", cost:170, glow:0xff6a2b, light:0xff6a2b, previewUrl:fireTex.previewUrl,
+      build:function(){ return new THREE.MeshStandardMaterial({ map:fireTex, emissiveMap:fireTex, roughness:0.5, metalness:0.05, emissive:0xffffff, emissiveIntensity:1.6 }); },
+      geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
+    { id:"earth", name:"Sayyora Yer", cost:150, glow:0x4a90d9, light:0x4a90d9, previewUrl:earthTex.previewUrl,
+      build:function(){ return new THREE.MeshStandardMaterial({ map:earthTex, roughness:0.6, metalness:0.05 }); },
+      geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
+    { id:"saturn", name:"Halqali sayyora", cost:220, glow:0xd9b473, light:0xe9cd97, previewUrl:saturnTex.previewUrl,
+      build:function(){ return new THREE.MeshStandardMaterial({ map:saturnTex, roughness:0.65, metalness:0.05 }); },
+      geo:function(){ return new THREE.SphereGeometry(0.4, 28, 20); },
+      decorate:function(core){
+        var ring = new THREE.Mesh(
+          new THREE.RingGeometry(0.58, 0.95, 48),
+          new THREE.MeshBasicMaterial({ color:0xe3c48a, transparent:true, opacity:0.75, side:THREE.DoubleSide })
+        );
+        ring.rotation.x = Math.PI/2.4;
+        core.add(ring);
+      } }
+  ];
+  function getSkin(id){
+    for(var i=0;i<SKINS.length;i++){ if(SKINS[i].id===id) return SKINS[i]; }
+    return SKINS[0];
+  }
+
+  /* ===================== player ===================== */
+  var player = new THREE.Group();
+  var core = null;
+  var playerLight = new THREE.PointLight(0x2fe6c8, 1.2, 8);
+  playerLight.position.set(0,0.3,0.4);
+  player.add(playerLight);
+  player.position.set(0, 0, 0);
+  scene.add(player);
+
+  function applySkin(id){
+    var skin = getSkin(id);
+    if(core){ player.remove(core); }
+    core = new THREE.Mesh(skin.geo(), skin.build());
+    if(skin.decorate) skin.decorate(core);
+    player.add(core);
+    playerLight.color.setHex(skin.light);
+  }
+  applySkin(selectedSkin);
+
+  /* ===================== world objects (obstacles / shards) ===================== */
+  var SPAWN_Z = -150;
+  var RECYCLE_Z = 9;
+
+  var obstGeoBlock = new THREE.IcosahedronGeometry(0.3, 0);
+  var obstMatBlock = new THREE.MeshStandardMaterial({ color:0xff3366, emissive:0xb01438, emissiveIntensity:1.7, roughness:0.3 });
+  var spikeMiniGeo = new THREE.ConeGeometry(0.08, 0.32, 5);
+  var mineDirs = [[0,1,0],[0,-1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]];
+
+  var hurdleGeo = new THREE.BoxGeometry(6.2, 0.5, 0.4);
+  var hurdleMat = new THREE.MeshStandardMaterial({ color:0xffdd3d, emissive:0xc48b00, emissiveIntensity:1.5, roughness:0.35 });
+  var pylonGeo = new THREE.CylinderGeometry(0.1, 0.1, 1.7, 6);
+
+  var spikeGeo = new THREE.ConeGeometry(0.4, 1.7, 6);
+  var spikeMat = new THREE.MeshStandardMaterial({ color:0xc93dff, emissive:0x8a17c2, emissiveIntensity:1.7, roughness:0.25 });
+
+  var droneCoreGeo = new THREE.IcosahedronGeometry(0.28, 0);
+  var droneRingGeo = new THREE.TorusGeometry(0.46, 0.045, 6, 16);
+  var droneMat = new THREE.MeshStandardMaterial({ color:0xffaa33, emissive:0xcc6a00, emissiveIntensity:1.7, roughness:0.25 });
+
+  var shardGeo = new THREE.OctahedronGeometry(0.26, 0);
+  var shardMat = new THREE.MeshStandardMaterial({ color:0x2fe6c8, emissive:0x1de6c0, emissiveIntensity:1.6, roughness:0.15, metalness:0.3 });
+
+  var pool = []; // active spawned objects: {mesh, type, lane, z, alive}
+
+  function buildMine(){
+    var g = new THREE.Group();
+    g.add(new THREE.Mesh(obstGeoBlock, obstMatBlock));
+    for(var i=0;i<mineDirs.length;i++){
+      var d = mineDirs[i];
+      var sp = new THREE.Mesh(spikeMiniGeo, obstMatBlock);
+      sp.position.set(d[0]*0.28, d[1]*0.28, d[2]*0.28);
+      sp.up.set(0,0,1);
+      sp.lookAt(d[0]*0.6, d[1]*0.6, d[2]*0.6);
+      sp.rotateX(Math.PI/2);
+      g.add(sp);
+    }
+    return g;
+  }
+  function buildGate(){
+    var g = new THREE.Group();
+    g.add(new THREE.Mesh(hurdleGeo, hurdleMat));
+    var p1 = new THREE.Mesh(pylonGeo, hurdleMat); p1.position.set(-3.05, 0.5, 0); g.add(p1);
+    var p2 = new THREE.Mesh(pylonGeo, hurdleMat); p2.position.set(3.05, 0.5, 0); g.add(p2);
+    return g;
+  }
+  function buildDrone(){
+    var g = new THREE.Group();
+    g.add(new THREE.Mesh(droneCoreGeo, droneMat));
+    var ring = new THREE.Mesh(droneRingGeo, droneMat);
+    ring.rotation.x = Math.PI/2;
+    g.add(ring);
+    return g;
+  }
+
+  function makeObstacle(kind){
+    var mesh;
+    if(kind === "hurdle"){ mesh = buildGate(); }
+    else if(kind === "shard"){ mesh = new THREE.Mesh(shardGeo, shardMat); }
+    else if(kind === "spike"){ mesh = new THREE.Mesh(spikeGeo, spikeMat); }
+    else if(kind === "drone"){ mesh = buildDrone(); }
+    else { mesh = buildMine(); }
+    scene.add(mesh);
+    return { mesh:mesh, type:kind, lane:1, baseLane:1, phase:Math.random()*Math.PI*2, z:SPAWN_Z - Math.random()*40, active:false, collected:false };
+  }
+
+  var POOL_SIZE = 40;
+  for(var p=0;p<POOL_SIZE;p++){ pool.push(makeObstacle("shard")); pool[p].mesh.visible = false; }
+
+  function getFree(){
+    for(var i=0;i<pool.length;i++){ if(!pool[i].active) return pool[i]; }
+    return null;
+  }
+
+  function spawnPattern(z){
+    var diff = Math.min(1, elapsed / 100); // ramps up over ~100s
+    var pSingle = 0.22;
+    var pDouble = 0.09 + diff * 0.07;  // more forced lane-swaps later on
+    var pHurdle = 0.10 + diff * 0.07;  // more jump checks later on
+    var pSpike  = 0.13 + diff * 0.05;  // tall spires - dodge only, no jump
+    var pDrone  = 0.12 + diff * 0.07;  // oscillating mines
+    var roll = Math.random(), acc = 0;
+    if(roll < (acc += pSingle)){
+      // single blocker - dodge or jump
+      var lane = Math.floor(Math.random()*3);
+      placeObstacle("block", lane, z, 0.5);
+    } else if(roll < (acc += pDouble)){
+      // double blocker forcing one safe lane
+      var safe = Math.floor(Math.random()*3);
+      for(var l=0;l<3;l++){ if(l!==safe) placeObstacle("block", l, z, 0.5); }
+    } else if(roll < (acc += pHurdle)){
+      // gate across all lanes - jump required
+      placeObstacle("hurdle", 1, z, 0.32);
+    } else if(roll < (acc += pSpike)){
+      // tall spire - too tall to clear, must switch lanes
+      var laneS = Math.floor(Math.random()*3);
+      placeObstacle("spike", laneS, z, 0.85);
+    } else if(roll < (acc += pDrone)){
+      // oscillating mine - drifts across lanes, dodge or jump
+      var laneD = Math.floor(Math.random()*3);
+      placeObstacle("drone", laneD, z, 0.55);
+    } else {
+      // clear stretch, shards only handled separately
+    }
+  }
+
+  function placeObstacle(kind, lane, z, y){
+    var o = getFree();
+    if(!o) return;
+    if(o.type !== kind){
+      // swap geometry/material by replacing mesh
+      scene.remove(o.mesh);
+      var fresh = makeObstacle(kind);
+      pool[pool.indexOf(o)] = fresh;
+      o = fresh;
+    }
+    o.active = true; o.collected = false;
+    o.lane = lane; o.baseLane = lane; o.z = z;
+    o.mesh.visible = true;
+    o.mesh.position.set(LANES[lane], y, z);
+    o.mesh.rotation.set(0,0,0);
+  }
+
+  function spawnShardRun(z){
+    var lane = Math.floor(Math.random()*3);
+    var count = 3 + Math.floor(Math.random()*4);
+    for(var i=0;i<count;i++){
+      placeObstacle("shard", lane, z - i*2.6, 0.9);
+    }
+  }
+
+  /* ===================== game state ===================== */
+  var STATE = { MENU:"menu", PLAY:"play", OVER:"over" };
+  var state = STATE.MENU;
+  var paused = false;
+
+  var laneIndex = 1;
+  var px = 0, py = 0, vy = 0;
+  var jumping = false;
+  var GRAVITY = 26, JUMP_V = 9.2;
+
+  var speed = 13;
+  var BASE_SPEED = 13, MAX_SPEED = 52, ACCEL = 0.34;
+  var elapsed = 0, distance = 0, score = 0, shardCount = 0;
+  var lives = 3, invincible = 0;
+  var obstacleTimer = 0, shardTimer = 0;
+
+  var clock = new THREE.Clock();
+
+  /* ===================== HUD refs ===================== */
+  var hud = document.getElementById("hud");
+  var touchpad = document.getElementById("touchpad");
+  var distanceVal = document.getElementById("distanceVal");
+  var scoreVal = document.getElementById("scoreVal");
+  var speedfill = document.getElementById("speedfill");
+  var livesEl = document.getElementById("lives");
+  var flashEl = document.getElementById("flash");
+  var startOverlay = document.getElementById("startOverlay");
+  var overOverlay = document.getElementById("overOverlay");
+  var pauseOverlay = document.getElementById("pauseOverlay");
+  var pauseBtn = document.getElementById("pauseBtn");
+  var adOverlay = document.getElementById("adOverlay");
+  var adSkipBtn = document.getElementById("adSkipBtn");
+  var bestTagStart = document.getElementById("bestTagStart");
+
+  function renderLives(){
+    livesEl.innerHTML = "";
+    for(var i=0;i<3;i++){
+      var span = document.createElement("span");
+      span.className = "heart" + (i < lives ? "" : " lost");
+      span.innerHTML = "&#10084;";
+      livesEl.appendChild(span);
+    }
+  }
+
+  function updateBestTag(){
+    if(best > 0){
+      bestTagStart.style.display = "inline-block";
+      bestTagStart.innerHTML = "&#10022; " + t("best_score_label") + ": " + best + " &#10022;";
+    } else {
+      bestTagStart.style.display = "none";
+    }
+  }
+  updateBestTag();
+
+  /* ===================== coins & shop ===================== */
+  var runStartCoins = coins;
+  function updateCoinDisplays(){
+    ["coinTotalStart","coinTotalOver","coinTotalShop"].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.textContent = coins;
+    });
+  }
+  updateCoinDisplays();
+
+  var skinGrid = document.getElementById("skinGrid");
+  var shopOverlay = document.getElementById("shopOverlay");
+  var shopReturnOverlay = null;
+
+  function renderShop(){
+    skinGrid.innerHTML = "";
+    SKINS.forEach(function(skin){
+      var owned = ownedSkins.indexOf(skin.id) !== -1;
+      var isSelected = selectedSkin === skin.id;
+      var card = document.createElement("div");
+      card.className = "skin-card";
+
+      var swatch = document.createElement("div");
+      swatch.className = "skin-swatch";
+      if(skin.previewUrl){
+        swatch.style.backgroundImage = "url(" + skin.previewUrl + ")";
+        swatch.style.backgroundSize = "180% 180%";
+        swatch.style.backgroundPosition = "center 35%";
+      } else {
+        swatch.style.background = "#" + skin.glow.toString(16).padStart(6,"0");
+      }
+      card.appendChild(swatch);
+
+      var name = document.createElement("div");
+      name.className = "skin-name";
+      name.textContent = t("skin_" + skin.id);
+      card.appendChild(name);
+
+      var price = document.createElement("div");
+      price.className = "skin-price";
+      price.textContent = owned ? "" : (skin.cost + " " + t("coin_suffix"));
+      card.appendChild(price);
+
+      var btn = document.createElement("button");
+      if(isSelected){
+        btn.className = "skin-buy selected";
+        btn.textContent = t("selected_btn");
+        btn.disabled = true;
+      } else if(owned){
+        btn.className = "skin-buy owned";
+        btn.textContent = t("select_btn");
+        btn.addEventListener("click", function(){
+          selectedSkin = skin.id;
+          saveSkin(selectedSkin);
+          applySkin(selectedSkin);
+          renderShop();
+        });
+      } else {
+        btn.className = "skin-buy";
+        btn.textContent = t("buy_btn");
+        btn.disabled = coins < skin.cost;
+        btn.addEventListener("click", function(){
+          if(coins < skin.cost) return;
+          coins -= skin.cost;
+          saveCoins(coins);
+          ownedSkins.push(skin.id);
+          saveOwned(ownedSkins);
+          selectedSkin = skin.id;
+          saveSkin(selectedSkin);
+          applySkin(selectedSkin);
+          updateCoinDisplays();
+          renderShop();
+        });
+      }
+      card.appendChild(btn);
+      skinGrid.appendChild(card);
+    });
+  }
+
+  function openShop(fromOverlay){
+    shopReturnOverlay = fromOverlay;
+    updateCoinDisplays();
+    renderShop();
+    fromOverlay.classList.add("hidden");
+    shopOverlay.classList.remove("hidden");
+  }
+  function closeShop(){
+    shopOverlay.classList.add("hidden");
+    if(shopReturnOverlay) shopReturnOverlay.classList.remove("hidden");
+  }
+
+  function pauseGame(){
+    if(state !== STATE.PLAY || paused) return;
+    paused = true;
+    stopMusic();
+    pauseOverlay.classList.remove("hidden");
+  }
+  function resumeGame(){
+    if(!paused) return;
+    paused = false;
+    pauseOverlay.classList.add("hidden");
+    startMusic();
+  }
+  function togglePause(){ if(paused) resumeGame(); else pauseGame(); }
+  function goToMenu(){
+    paused = false;
+    state = STATE.MENU;
+    stopMusic();
+    hud.classList.remove("live");
+    touchpad.classList.remove("live");
+    pauseBtn.classList.remove("live");
+    pauseOverlay.classList.add("hidden");
+    overOverlay.classList.add("hidden");
+    startOverlay.classList.remove("hidden");
+    updateBestTag();
+    updateCoinDisplays();
+  }
+
+  /* ============================================================
+     AD SLOT - interstitial placeholder shown on site load and
+     after every game over. Replace the internals of showAd() with
+     a real AdSense/AdMob call once this game is hosted on your own
+     domain with your own publisher account; keep calling onDone()
+     when the real ad finishes, errors, or is skipped/closed so the
+     game flow (menu / game-over screen) still continues normally.
+     ============================================================ */
+  function showAd(onDone){
+    adOverlay.classList.remove("hidden");
+    var seconds = 5;
+    adSkipBtn.disabled = true;
+    adSkipBtn.textContent = t("ad_skip") + " (" + seconds + ")";
+    var timer = setInterval(function(){
+      seconds -= 1;
+      if(seconds <= 0){
+        clearInterval(timer);
+        adSkipBtn.disabled = false;
+        adSkipBtn.textContent = t("ad_continue");
+      } else {
+        adSkipBtn.textContent = t("ad_skip") + " (" + seconds + ")";
+      }
+    }, 1000);
+    adSkipBtn.onclick = function(){
+      if(adSkipBtn.disabled) return;
+      clearInterval(timer);
+      adOverlay.classList.add("hidden");
+      onDone();
+    };
+  }
+
+  function applyI18n(){
+    document.querySelectorAll("[data-i18n]").forEach(function(el){
+      el.textContent = t(el.getAttribute("data-i18n"));
+    });
+    var langBtn = document.getElementById("langBtn");
+    if(langBtn) langBtn.textContent = lang.toUpperCase();
+    updateBestTag();
+    if(!shopOverlay.classList.contains("hidden")) renderShop();
+    if(state === STATE.PLAY){
+      distanceVal.textContent = Math.floor(distance) + " " + t("distance_unit");
+    } else {
+      distanceVal.textContent = "0 " + t("distance_unit");
+    }
+  }
+  function cycleLang(){
+    var idx = LANGS.indexOf(lang);
+    lang = LANGS[(idx + 1) % LANGS.length];
+    saveLang(lang);
+    applyI18n();
+  }
+
+  /* ===================== reset / start ===================== */
+  function resetWorld(){
+    laneIndex = 1; px = 0; py = 0; vy = 0; jumping = false; paused = false;
+    speed = BASE_SPEED; elapsed = 0; distance = 0; score = 0; shardCount = 0;
+    lives = 3; invincible = 0; obstacleTimer = 1.2; shardTimer = 0.6;
+    runStartCoins = coins;
+    player.position.set(0,0,0);
+    player.rotation.set(0,0,0);
+    pool.forEach(function(o){ o.active = false; o.mesh.visible = false; });
+    renderLives();
+    distanceVal.textContent = "0 " + t("distance_unit");
+    scoreVal.textContent = "0";
+    speedfill.style.width = "20%";
+  }
+
+  function startGame(){
+    resetWorld();
+    state = STATE.PLAY;
+    startOverlay.classList.add("hidden");
+    overOverlay.classList.add("hidden");
+    hud.classList.add("live");
+    touchpad.classList.add("live");
+    pauseBtn.classList.add("live");
+    pauseOverlay.classList.add("hidden");
+    clock.getDelta();
+    startMusic();
+  }
+
+  function endGame(){
+    state = STATE.OVER;
+    sfxGameOver();
+    stopMusic();
+    hud.classList.remove("live");
+    touchpad.classList.remove("live");
+    pauseBtn.classList.remove("live");
+    var finalScore = score;
+    var isRecord = finalScore > best;
+    if(isRecord){ best = finalScore; saveBest(best); }
+    document.getElementById("finalDistance").textContent = Math.floor(distance) + " " + t("distance_unit");
+    document.getElementById("finalScore").textContent = finalScore;
+    document.getElementById("finalBest").textContent = best;
+    document.getElementById("newRecordTag").style.display = isRecord ? "block" : "none";
+    document.getElementById("finalCoinsGained").textContent = "+" + (coins - runStartCoins);
+    updateBestTag();
+    updateCoinDisplays();
+    showAd(function(){ overOverlay.classList.remove("hidden"); });
+  }
+
+  function hitFlash(){
+    flashEl.classList.add("hit");
+    setTimeout(function(){ flashEl.classList.remove("hit"); }, 90);
+  }
+
+  function doHit(){
+    if(invincible > 0) return;
+    lives -= 1;
+    invincible = 1.4;
+    sfxHit();
+    hitFlash();
+    renderLives();
+    if(lives <= 0){ endGame(); }
+  }
+
+  function doCollect(o){
+    o.collected = true;
+    o.active = false;
+    o.mesh.visible = false;
+    shardCount += 1;
+    coins += 1;
+    saveCoins(coins);
+    sfxCollect();
+  }
+
+  /* ===================== input ===================== */
+  function laneLeft(){ if(state!==STATE.PLAY || paused) return; laneIndex = Math.max(0, laneIndex-1); }
+  function laneRight(){ if(state!==STATE.PLAY || paused) return; laneIndex = Math.min(2, laneIndex+1); }
+  function doJump(){
+    if(state!==STATE.PLAY || paused) return;
+    if(!jumping){ vy = JUMP_V; jumping = true; sfxJump(); }
+  }
+  var FALL_BOOST = 17;
+  function fastFall(){
+    if(state!==STATE.PLAY || paused) return;
+    if(jumping && py > 0.02 && vy > -FALL_BOOST){ vy = -FALL_BOOST; }
+  }
+
+  window.addEventListener("keydown", function(e){
+    if(!shopOverlay.classList.contains("hidden")){
+      if(e.code === "Escape") closeShop();
+      return;
+    }
+    if(paused){
+      if(e.code === "Escape") resumeGame();
+      return;
+    }
+    if(state === STATE.PLAY && e.code === "Escape"){ pauseGame(); return; }
+    if(state === STATE.MENU && (e.code==="Space"||e.code==="Enter")){ startGame(); return; }
+    if(state === STATE.OVER && (e.code==="Space"||e.code==="Enter")){ startGame(); return; }
+    if(e.code==="ArrowLeft" || e.code==="KeyA") laneLeft();
+    else if(e.code==="ArrowRight" || e.code==="KeyD") laneRight();
+    else if(e.code==="ArrowUp" || e.code==="KeyW" || e.code==="Space") doJump();
+    else if(e.code==="ArrowDown" || e.code==="KeyS") fastFall();
+  });
+
+  document.getElementById("startBtn").addEventListener("click", startGame);
+  document.getElementById("retryBtn").addEventListener("click", startGame);
+  document.getElementById("leftBtn").addEventListener("click", laneLeft);
+  document.getElementById("rightBtn").addEventListener("click", laneRight);
+  document.getElementById("jumpBtn").addEventListener("click", doJump);
+  document.getElementById("fallBtn").addEventListener("click", fastFall);
+  document.getElementById("muteBtn").addEventListener("click", toggleMute);
+  document.getElementById("openShopBtn").addEventListener("click", function(){ openShop(startOverlay); });
+  document.getElementById("openShopBtn2").addEventListener("click", function(){ openShop(overOverlay); });
+  document.getElementById("closeShopBtn").addEventListener("click", closeShop);
+  document.getElementById("langBtn").addEventListener("click", cycleLang);
+  pauseBtn.addEventListener("click", pauseGame);
+  document.getElementById("resumeBtn").addEventListener("click", resumeGame);
+  document.getElementById("pauseRetryBtn").addEventListener("click", function(){ paused = false; pauseOverlay.classList.add("hidden"); startGame(); });
+  document.getElementById("menuBtn").addEventListener("click", goToMenu);
+  document.getElementById("overMenuBtn").addEventListener("click", goToMenu);
+  applyMute();
+  applyI18n();
+
+  // show an ad once, right when the site is opened, before the start menu appears
+  startOverlay.classList.add("hidden");
+  showAd(function(){ startOverlay.classList.remove("hidden"); });
+
+  /* swipe */
+  (function swipe(){
+    var sx=0, sy=0, active=false;
+    app.addEventListener("touchstart", function(e){
+      if(!e.touches[0]) return;
+      sx = e.touches[0].clientX; sy = e.touches[0].clientY; active = true;
+    }, {passive:true});
+    app.addEventListener("touchend", function(e){
+      if(!active) return; active = false;
+      var t = e.changedTouches[0];
+      if(!t) return;
+      var dx = t.clientX - sx, dy = t.clientY - sy;
+      if(Math.abs(dx) < 24 && Math.abs(dy) < 24) return;
+      if(Math.abs(dx) > Math.abs(dy)){ if(dx<0) laneLeft(); else laneRight(); }
+      else { if(dy<0) doJump(); else fastFall(); }
+    }, {passive:true});
+  })();
+
+  /* ===================== main loop ===================== */
+  function tick(){
+    requestAnimationFrame(tick);
+    var dt = Math.min(clock.getDelta(), 0.05);
+
+    // idle camera drift on menu/over
+    if(state !== STATE.PLAY){
+      rings.forEach(function(ring){ ring.rotation.z += dt*0.15; });
+      renderer.render(scene, camera);
+      return;
+    }
+
+    if(paused){
+      renderer.render(scene, camera);
+      return;
+    }
+
+    elapsed += dt;
+    speed = Math.min(MAX_SPEED, BASE_SPEED + elapsed*ACCEL);
+    distance += speed*dt;
+    if(invincible > 0) invincible -= dt;
+
+    // lane lerp
+    var targetX = LANES[laneIndex];
+    px += (targetX - px) * Math.min(1, dt*9);
+    player.position.x = px;
+    player.rotation.z = (targetX - px) * -0.25;
+
+    // jump physics
+    if(jumping){
+      vy -= GRAVITY*dt;
+      py += vy*dt;
+      if(py <= 0){ py = 0; vy = 0; jumping = false; }
+    }
+    player.position.y = 0.55 + py;
+    player.rotation.x += dt*2.2;
+    player.rotation.y += dt*1.6;
+
+    // invincible flicker
+    core.material.opacity = 1;
+    player.visible = invincible > 0 ? (Math.floor(elapsed*18)%2===0) : true;
+
+    // spawn timers
+    obstacleTimer -= dt;
+    if(obstacleTimer <= 0){
+      spawnPattern(SPAWN_Z);
+      obstacleTimer = Math.max(0.38, 1.35 - elapsed*0.0085);
+    }
+    shardTimer -= dt;
+    if(shardTimer <= 0){
+      spawnShardRun(SPAWN_Z - 6);
+      shardTimer = 1.1 + Math.random()*0.8;
+    }
+
+    // advance world objects
+    for(var i=0;i<pool.length;i++){
+      var o = pool[i];
+      if(!o.active) continue;
+      o.z += speed*dt;
+      o.mesh.position.z = o.z;
+
+      if(o.type === "drone"){
+        o.mesh.position.x = LANES[o.baseLane] + Math.sin(o.z*0.5 + o.phase) * 1.7;
+        o.mesh.rotation.y += dt*3.4;
+      } else {
+        o.mesh.rotation.x += dt*1.4;
+        o.mesh.rotation.y += dt*1.8;
+      }
+
+      if(o.z > RECYCLE_Z){
+        o.active = false; o.mesh.visible = false;
+        continue;
+      }
+
+      // collision - real distance to the obstacle's actual bounds, not a blanket lane/window guess
+      if(o.z > -1.6 && o.z < 1.6){
+        var dz = Math.abs(o.z);
+        if(o.type === "shard"){
+          var dxS = Math.abs(o.mesh.position.x - px);
+          if(!o.collected && dxS < 0.58 && dz < 0.5) doCollect(o);
+        } else if(o.type === "block"){
+          var dxB = Math.abs(o.mesh.position.x - px);
+          if(!o.collected && dxB < 0.6 && dz < 0.52 && py < 0.4) doHit();
+        } else if(o.type === "hurdle"){
+          if(dz < 0.5 && py < 0.55) doHit();
+        } else if(o.type === "spike"){
+          var dxSp = Math.abs(o.mesh.position.x - px);
+          if(dxSp < 0.56 && dz < 0.48) doHit();
+        } else if(o.type === "drone"){
+          var dxD = Math.abs(o.mesh.position.x - px);
+          if(dxD < 0.62 && dz < 0.52 && py < 0.4) doHit();
+        }
+      }
+    }
+
+    // rings recycle + rotate
+    for(var r2=0;r2<rings.length;r2++){
+      var ring = rings[r2];
+      ring.position.z += speed*dt;
+      ring.rotation.z += dt*0.4;
+      if(ring.position.z > 8){ ring.position.z -= RING_COUNT*RING_SPACING; }
+    }
+
+    // ground scroll
+    groundTex.offset.y -= speed*dt*0.045;
+
+    // camera follow
+    camera.position.x += (px*0.6 - (camera.position.x)) * Math.min(1, dt*4);
+    camera.position.y = 3.4 - py*0.15;
+    camera.lookAt(px*0.4, 1.1 + py*0.3, -8);
+
+    score = Math.floor(distance) + shardCount*10;
+    distanceVal.textContent = Math.floor(distance) + " " + t("distance_unit");
+    scoreVal.textContent = score;
+    speedfill.style.width = Math.min(100, 20 + (speed-BASE_SPEED)/(MAX_SPEED-BASE_SPEED)*80) + "%";
+
+    renderer.render(scene, camera);
+  }
+
+  renderLives();
+  tick();
+})();
+</script>
