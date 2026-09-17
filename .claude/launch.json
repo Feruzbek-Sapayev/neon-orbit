@@ -1,0 +1,11 @@
+{
+  "version": "0.0.1",
+  "configurations": [
+    {
+      "name": "neon-orbit",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "8934", "--directory", "C:/Users/ASUS/AppData/Local/Temp/claude/C--Projects-Claude-game/92487e96-4b15-41e1-b331-ec5826434f10/scratchpad"],
+      "port": 8934
+    }
+  ]
+}
