@@ -284,6 +284,7 @@
 <div id="app">
   <div class="flash" id="flash"></div>
   <div id="topControls">
+    <div id="profileBadge" class="icon-btn lang-btn" style="display:none;" title="Profil"></div>
     <div id="muteBtn" class="icon-btn">&#128266;</div>
     <div id="langBtn" class="icon-btn lang-btn">UZ</div>
     <div id="pauseBtn" class="icon-btn">&#9208;</div>
@@ -498,9 +499,13 @@
       sbUser = (res && res.data && res.data.session && res.data.session.user) || null;
       updateAuthUI();
     });
-    sb.auth.onAuthStateChange(function(_event, session){
+    sb.auth.onAuthStateChange(function(event, session){
       sbUser = (session && session.user) || null;
       updateAuthUI();
+      // fresh sign-in (not a page-reload session restore) and no nickname yet - ask for one right away
+      if(event === "SIGNED_IN" && sbUser && !nickname){
+        openLeaderboard();
+      }
     });
   }
 
@@ -1457,6 +1462,7 @@
     var loggedOut = document.getElementById("lbLoggedOut");
     var loggedIn = document.getElementById("lbLoggedIn");
     var startAuthBtn = document.getElementById("startAuthBtn");
+    var badge = document.getElementById("profileBadge");
     if(!loggedOut || !loggedIn) return; // DOM not ready yet
     if(sbUser){
       loggedOut.classList.add("hidden");
@@ -1464,10 +1470,17 @@
       document.getElementById("lbUserEmail").textContent = sbUser.email || "";
       document.getElementById("lbNickInput").value = nickname || (sbUser.email ? sbUser.email.split("@")[0] : "");
       if(startAuthBtn) startAuthBtn.style.display = "none";
+      if(badge){
+        badge.style.display = "flex";
+        var label = nickname || (sbUser.email ? sbUser.email.split("@")[0] : "?");
+        badge.textContent = label.slice(0,10);
+        badge.title = sbUser.email || "";
+      }
     } else {
       loggedOut.classList.remove("hidden");
       loggedIn.classList.add("hidden");
       if(startAuthBtn) startAuthBtn.style.display = "";
+      if(badge) badge.style.display = "none";
     }
   }
 
@@ -1483,6 +1496,7 @@
     saveNick(v);
     var statusEl = document.getElementById("lbStatus");
     if(statusEl && v) statusEl.textContent = t("lb_nick_saved");
+    updateAuthUI();
   }
 
   var authReturnToLeaderboard = false;
@@ -1796,6 +1810,7 @@
   document.getElementById("lbSaveNickBtn").addEventListener("click", saveNicknameFromInput);
   document.getElementById("lbOpenAuthBtn").addEventListener("click", function(){ openAuth(true); });
   document.getElementById("startAuthBtn").addEventListener("click", function(){ openAuth(false); });
+  document.getElementById("profileBadge").addEventListener("click", openLeaderboard);
   document.getElementById("lbSignOutBtn").addEventListener("click", function(){ signOutUser().then(function(){ renderLeaderboard(); }); });
   document.getElementById("closeAuthBtn").addEventListener("click", closeAuth);
   document.getElementById("authSubmitBtn").addEventListener("click", handleAuthSubmit);
