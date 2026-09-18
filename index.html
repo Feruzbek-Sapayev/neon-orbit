@@ -336,6 +336,7 @@
         <button class="shop-btn" id="openShopBtn" data-i18n="shop_btn">DO'KON</button>
         <button class="shop-btn" id="openLeaderboardBtn" data-i18n="leaderboard_btn">REYTING</button>
       </div>
+
       <p class="record-tag" id="bestTagStart" style="display:none;"></p>
       <button class="cta" id="startBtn" data-i18n="start_btn">UCHISHNI BOSHLASH</button>
     </div>
@@ -529,9 +530,9 @@
     });
   }
 
-  function renderLeaderboard(){
-    var listEl = document.getElementById("lbList");
-    var statusEl = document.getElementById("lbStatus");
+  function renderLeaderboardInto(listId, statusId, limit){
+    var listEl = document.getElementById(listId);
+    var statusEl = document.getElementById(statusId);
     if(!sb){
       statusEl.textContent = t("lb_unavailable");
       return;
@@ -545,13 +546,13 @@
       .then(function(res){
         if(res.error){ statusEl.textContent = t("lb_unavailable"); return; }
         var rows = res.data || [];
-        // keep only each player's best row, client-side, then take top 10
+        // keep only each player's best row, client-side, then take top N
         var best = {};
         rows.forEach(function(r){
           if(!best[r.nickname] || r.score > best[r.nickname]) best[r.nickname] = r.score;
         });
         var top = Object.keys(best).map(function(n){ return { nickname:n, score:best[n] }; })
-          .sort(function(a,b){ return b.score - a.score; }).slice(0, 10);
+          .sort(function(a,b){ return b.score - a.score; }).slice(0, limit);
         if(!top.length){ statusEl.textContent = t("lb_empty"); return; }
         statusEl.textContent = "";
         top.forEach(function(row, i){
@@ -562,6 +563,7 @@
         });
       });
   }
+  function renderLeaderboard(){ renderLeaderboardInto("lbList", "lbStatus", 10); }
 
   /* ===================== i18n ===================== */
   var LANGS = ["uz", "en", "ru"];
