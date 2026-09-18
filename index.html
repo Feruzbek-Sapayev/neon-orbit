@@ -729,8 +729,21 @@
   var camera = new THREE.PerspectiveCamera(62, app.clientWidth/app.clientHeight, 0.1, 300);
   camera.position.set(0, 3.4, 6.4);
 
-  var renderer = new THREE.WebGLRenderer({ antialias:true, alpha:false });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  /* weak-GPU / low-end device detection, so we don't force a heavy render path on hardware that can't keep up */
+  var LOW_END = (function(){
+    if((navigator.hardwareConcurrency || 8) <= 4) return true;
+    if((navigator.deviceMemory || 8) <= 4) return true;
+    try{
+      var probe = document.createElement("canvas").getContext("webgl") || document.createElement("canvas").getContext("experimental-webgl");
+      var info = probe && probe.getExtension("WEBGL_debug_renderer_info");
+      var renderer_ = info && probe.getParameter(info.UNMASKED_RENDERER_WEBGL);
+      if(renderer_ && /(swiftshader|llvmpipe|software|intel.*hd graphics [23]000|mali-4|adreno (2|3)0[0-9])/i.test(renderer_)) return true;
+    }catch(e){}
+    return false;
+  })();
+
+  var renderer = new THREE.WebGLRenderer({ antialias:!LOW_END, alpha:false, powerPreference:"high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, LOW_END ? 1 : 2));
   renderer.setSize(app.clientWidth, app.clientHeight);
   renderer.setClearColor(0x05060d, 1);
   app.insertBefore(renderer.domElement, app.firstChild);
@@ -746,9 +759,11 @@
   var keyLight = new THREE.PointLight(0x8b6bff, 1.4, 40);
   keyLight.position.set(0, 6, 4);
   scene.add(keyLight);
-  var rimLight = new THREE.PointLight(0x2fe6c8, 1.1, 30);
-  rimLight.position.set(0, 2, -6);
-  scene.add(rimLight);
+  if(!LOW_END){
+    var rimLight = new THREE.PointLight(0x2fe6c8, 1.1, 30);
+    rimLight.position.set(0, 2, -6);
+    scene.add(rimLight);
+  }
 
   /* starfield */
   (function starfield(){
@@ -762,7 +777,7 @@
     sc.fillStyle = grad; sc.fillRect(0,0,32,32);
     var starTex = new THREE.CanvasTexture(starCanvas);
 
-    var count = 700;
+    var count = LOW_END ? 250 : 700;
     var geo = new THREE.BufferGeometry();
     var pos = new Float32Array(count*3);
     for(var i=0;i<count;i++){
@@ -811,7 +826,7 @@
 
   /* tunnel rings */
   var rings = [];
-  var RING_COUNT = 22, RING_SPACING = 9, RING_START = -6;
+  var RING_COUNT = LOW_END ? 12 : 22, RING_SPACING = 9, RING_START = -6;
   for(var r=0;r<RING_COUNT;r++){
     var ringMat = new THREE.MeshBasicMaterial({ color: r%3===0 ? 0x2fe6c8 : 0x9d7bff, transparent:true, opacity:0.7, wireframe:true });
     var ring = new THREE.Mesh(new THREE.TorusGeometry(4.6, 0.045, 6, 20), ringMat);
