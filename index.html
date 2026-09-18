@@ -352,6 +352,17 @@
     </div>
   </div>
 
+  <div class="overlay hidden" id="reviveOverlay">
+    <div class="card">
+      <p class="eyebrow" data-i18n="revive_eyebrow">To'qnashuv</p>
+      <h1 class="title glow-title" style="font-size:clamp(1.5rem,6vw,2rem); margin-bottom:6px;" data-i18n="revive_title">DAVOM ETASIZMI?</h1>
+      <p class="subtitle" style="margin:0 0 20px;" data-i18n="revive_text">Kalitdan foydalanib, o'sha joyning o'zidan yana 1 jon bilan davom etishingiz mumkin.</p>
+      <p style="font-size:.8rem; color:var(--gold); margin:0 0 20px;"><span data-i18n="key_owned">Sizda:</span> <span id="reviveKeyCount">0</span> &#128273;</p>
+      <button class="cta" id="reviveUseBtn" style="margin-bottom:12px;" data-i18n="revive_use_btn">KALITDAN FOYDALANISH</button>
+      <button class="cta" id="reviveDeclineBtn" style="background:transparent; color:var(--muted); box-shadow:none; border:1px solid rgba(255,255,255,.14);" data-i18n="revive_decline_btn">YO'Q, TUGATISH</button>
+    </div>
+  </div>
+
   <div class="overlay hidden" id="overOverlay">
     <div class="card">
       <p class="eyebrow" id="overEyebrow" data-i18n="over_eyebrow">O'yin yakunlandi</p>
@@ -406,6 +417,16 @@
       <div class="coin-row" style="justify-content:center; margin-bottom:16px;">
         <span class="coin-badge"><span class="coin-dot"></span><span id="coinTotalShop">0</span> <span data-i18n="coin_suffix">tanga</span></span>
       </div>
+
+      <div class="obst-legend" style="margin-bottom:18px; display:flex; align-items:center; justify-content:space-between; gap:10px; text-align:left;">
+        <div>
+          <div style="font-family:'Orbitron',sans-serif; font-size:.9rem; color:var(--text);">&#128273; <span data-i18n="key_item_name">Qayta tirilish kaliti</span></div>
+          <div style="font-size:.72rem; color:var(--muted); margin-top:4px;" data-i18n="key_item_desc">Yiqilganingizda o'sha joydan davom etish imkonini beradi</div>
+          <div style="font-size:.76rem; color:var(--gold); margin-top:6px;"><span data-i18n="key_owned">Sizda:</span> <span id="keyOwnedCount">0</span></div>
+        </div>
+        <button class="shop-btn" id="buyKeyBtn" style="white-space:nowrap;"></button>
+      </div>
+
       <div class="skin-grid" id="skinGrid"></div>
       <button class="cta" id="closeShopBtn" style="margin-top:20px;" data-i18n="close_btn">ORQAGA</button>
     </div>
@@ -488,6 +509,13 @@
   var coins = loadCoins();
   var ownedSkins = loadOwned();
   var selectedSkin = loadSkin();
+
+  /* ===================== revive key ===================== */
+  var KEYS_KEY = "neon-orbit-keys";
+  var KEY_COST_COINS = 30;
+  function loadKeys(){ try{ return parseInt(localStorage.getItem(KEYS_KEY) || "0", 10) || 0; }catch(e){ return 0; } }
+  function saveKeys(v){ try{ localStorage.setItem(KEYS_KEY, String(v)); }catch(e){} }
+  var keyCount = loadKeys();
 
   /* ===================== account + leaderboard (Supabase) ===================== */
   var NICK_KEY = "neon-orbit-nick";
@@ -613,7 +641,12 @@
       auth_submit_btn: "KIRISH / RO'YXATDAN O'TISH",
       auth_missing_fields: "Email va parolni kiriting.", auth_confirm_email: "Emailingizni tasdiqlash havolasi yuborildi.",
       profile_eyebrow: "Profil", profile_title: "HISOBIM", profile_link: "Profil",
-      nick_too_short: "Taxallus kamida 3 ta belgidan iborat bo'lishi kerak."
+      nick_too_short: "Taxallus kamida 3 ta belgidan iborat bo'lishi kerak.",
+      key_item_name: "Qayta tirilish kaliti", key_item_desc: "Yiqilganingizda o'sha joydan davom etish imkonini beradi",
+      key_owned: "Sizda:", buy_key_btn: "REKLAMA + {cost} TANGA", key_need_coins: "Yetarli tanga yo'q.",
+      revive_eyebrow: "To'qnashuv", revive_title: "DAVOM ETASIZMI?",
+      revive_text: "Kalitdan foydalanib, o'sha joyning o'zidan yana 1 jon bilan davom etishingiz mumkin.",
+      revive_use_btn: "KALITDAN FOYDALANISH", revive_decline_btn: "YO'Q, TUGATISH"
     },
     en: {
       eyebrow: "Online arcade - 3D",
@@ -647,7 +680,12 @@
       auth_submit_btn: "SIGN IN / REGISTER",
       auth_missing_fields: "Enter an email and password.", auth_confirm_email: "A confirmation link was sent to your email.",
       profile_eyebrow: "Profile", profile_title: "MY ACCOUNT", profile_link: "Profile",
-      nick_too_short: "Nickname must be at least 3 characters."
+      nick_too_short: "Nickname must be at least 3 characters.",
+      key_item_name: "Revive key", key_item_desc: "Lets you continue from where you fell",
+      key_owned: "You have:", buy_key_btn: "AD + {cost} COINS", key_need_coins: "Not enough coins.",
+      revive_eyebrow: "Crash", revive_title: "CONTINUE?",
+      revive_text: "Use a key to continue right where you fell, with 1 more life.",
+      revive_use_btn: "USE A KEY", revive_decline_btn: "NO, END RUN"
     },
     ru: {
       eyebrow: "Онлайн-аркада - 3D",
@@ -681,7 +719,12 @@
       auth_submit_btn: "ВОЙТИ / РЕГИСТРАЦИЯ",
       auth_missing_fields: "Введите email и пароль.", auth_confirm_email: "Ссылка для подтверждения отправлена на почту.",
       profile_eyebrow: "Профиль", profile_title: "МОЙ АККАУНТ", profile_link: "Профиль",
-      nick_too_short: "Никнейм должен содержать не менее 3 символов."
+      nick_too_short: "Никнейм должен содержать не менее 3 символов.",
+      key_item_name: "Ключ возрождения", key_item_desc: "Позволяет продолжить с того же места",
+      key_owned: "У вас:", buy_key_btn: "РЕКЛАМА + {cost} МОНЕТ", key_need_coins: "Недостаточно монет.",
+      revive_eyebrow: "Столкновение", revive_title: "ПРОДОЛЖИТЬ?",
+      revive_text: "Используйте ключ, чтобы продолжить с того же места с ещё 1 жизнью.",
+      revive_use_btn: "ИСПОЛЬЗОВАТЬ КЛЮЧ", revive_decline_btn: "НЕТ, ЗАВЕРШИТЬ"
     }
   };
   function detectDeviceLang(){
@@ -1429,6 +1472,7 @@
   var flashEl = document.getElementById("flash");
   var startOverlay = document.getElementById("startOverlay");
   var overOverlay = document.getElementById("overOverlay");
+  var reviveOverlay = document.getElementById("reviveOverlay");
   var pauseOverlay = document.getElementById("pauseOverlay");
   var pauseBtn = document.getElementById("pauseBtn");
   var adOverlay = document.getElementById("adOverlay");
@@ -1464,6 +1508,34 @@
     });
   }
   updateCoinDisplays();
+
+  function updateKeyDisplays(){
+    ["keyOwnedCount","reviveKeyCount"].forEach(function(id){
+      var el = document.getElementById(id);
+      if(el) el.textContent = keyCount;
+    });
+    var buyBtn = document.getElementById("buyKeyBtn");
+    if(buyBtn) buyBtn.textContent = t("buy_key_btn").replace("{cost}", KEY_COST_COINS);
+  }
+  updateKeyDisplays();
+
+  function buyKey(){
+    var buyBtn = document.getElementById("buyKeyBtn");
+    if(coins < KEY_COST_COINS){
+      var original = buyBtn.textContent;
+      buyBtn.textContent = t("key_need_coins");
+      setTimeout(function(){ buyBtn.textContent = original; }, 1600);
+      return;
+    }
+    showAd(function(){
+      coins -= KEY_COST_COINS;
+      saveCoins(coins);
+      keyCount += 1;
+      saveKeys(keyCount);
+      updateCoinDisplays();
+      updateKeyDisplays();
+    });
+  }
 
   var skinGrid = document.getElementById("skinGrid");
   var shopOverlay = document.getElementById("shopOverlay");
@@ -1685,6 +1757,7 @@
     var langBtn = document.getElementById("langBtn");
     if(langBtn) langBtn.textContent = lang.toUpperCase();
     updateBestTag();
+    updateKeyDisplays();
     if(!shopOverlay.classList.contains("hidden")) renderShop();
     if(state === STATE.PLAY){
       distanceVal.textContent = Math.floor(distance) + " " + t("distance_unit");
@@ -1760,7 +1833,32 @@
     sfxHit();
     hitFlash();
     renderLives();
-    if(lives <= 0){ endGame(); }
+    if(lives <= 0){ handleDeath(); }
+  }
+
+  function handleDeath(){
+    if(keyCount > 0){
+      paused = true;
+      updateKeyDisplays();
+      reviveOverlay.classList.remove("hidden");
+    } else {
+      endGame();
+    }
+  }
+  function reviveWithKey(){
+    keyCount -= 1;
+    saveKeys(keyCount);
+    updateKeyDisplays();
+    lives = 1;
+    invincible = 1.6;
+    renderLives();
+    reviveOverlay.classList.add("hidden");
+    paused = false;
+  }
+  function declineRevive(){
+    reviveOverlay.classList.add("hidden");
+    paused = false;
+    endGame();
   }
 
   function doCollect(o){
@@ -1814,6 +1912,9 @@
   document.getElementById("openShopBtn").addEventListener("click", function(){ openShop(startOverlay); });
   document.getElementById("openShopBtn2").addEventListener("click", function(){ openShop(overOverlay); });
   document.getElementById("closeShopBtn").addEventListener("click", closeShop);
+  document.getElementById("buyKeyBtn").addEventListener("click", buyKey);
+  document.getElementById("reviveUseBtn").addEventListener("click", reviveWithKey);
+  document.getElementById("reviveDeclineBtn").addEventListener("click", declineRevive);
   document.getElementById("openLeaderboardBtn").addEventListener("click", openLeaderboard);
   document.getElementById("closeLeaderboardBtn").addEventListener("click", closeLeaderboard);
   document.getElementById("profileSaveNickBtn").addEventListener("click", saveNicknameFromInput);
