@@ -407,25 +407,25 @@
     <div class="card shop-card">
       <p class="eyebrow" data-i18n="lb_eyebrow">Dunyo reytingi</p>
       <h1 class="title glow-title" style="font-size:clamp(1.4rem,6vw,1.9rem);" data-i18n="lb_title">TOP O'YINCHILAR</h1>
-
-      <div id="lbLoggedOut" style="margin:0 0 18px;">
-        <p style="font-size:.85rem; color:var(--muted); margin:0 0 10px;" data-i18n="lb_login_prompt">Reytingda ko'rinish uchun hisobga kiring.</p>
-        <button class="cta" id="lbOpenAuthBtn" data-i18n="lb_login_btn">KIRISH / RO'YXATDAN O'TISH</button>
-      </div>
-
-      <div id="lbLoggedIn" class="hidden" style="margin:0 0 18px;">
-        <p style="font-size:.8rem; color:var(--muted); margin:0 0 10px;"><span data-i18n="lb_signed_in_as">Kirgan hisob:</span> <span id="lbUserEmail" style="color:var(--text);"></span></p>
-        <div style="display:flex; gap:8px; margin:0 0 8px;">
-          <input id="lbNickInput" type="text" maxlength="20" placeholder="Taxallusingiz" data-i18n-placeholder="lb_nick_placeholder"
-            style="flex:1; min-width:0; background:rgba(255,255,255,.05); border:1px solid rgba(139,107,255,.4); border-radius:10px; padding:10px 12px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:.95rem;">
-          <button class="shop-btn" id="lbSaveNickBtn" data-i18n="lb_save_btn">SAQLASH</button>
-        </div>
-        <button class="shop-btn" id="lbSignOutBtn" data-i18n="lb_signout_btn">CHIQISH</button>
-      </div>
-
       <div id="lbStatus" style="font-size:.8rem; color:var(--muted); margin:0 0 12px; min-height:1.2em;"></div>
-      <div id="lbList" style="display:flex; flex-direction:column; gap:6px; text-align:left; max-height:38vh; overflow-y:auto;"></div>
+      <div id="lbList" style="display:flex; flex-direction:column; gap:6px; text-align:left; max-height:44vh; overflow-y:auto;"></div>
       <button class="cta" id="closeLeaderboardBtn" style="margin-top:20px;" data-i18n="close_btn">ORQAGA</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="profileOverlay">
+    <div class="card">
+      <p class="eyebrow" data-i18n="profile_eyebrow">Profil</p>
+      <h1 class="title glow-title" style="font-size:clamp(1.4rem,6vw,1.9rem);" data-i18n="profile_title">HISOBIM</h1>
+      <p style="font-size:.8rem; color:var(--muted); margin:0 0 10px;"><span data-i18n="lb_signed_in_as">Kirgan hisob:</span> <span id="profileEmail" style="color:var(--text);"></span></p>
+      <div style="display:flex; gap:8px; margin:0 0 16px;">
+        <input id="profileNickInput" type="text" maxlength="20" placeholder="Taxallusingiz" data-i18n-placeholder="lb_nick_placeholder"
+          style="flex:1; min-width:0; background:rgba(255,255,255,.05); border:1px solid rgba(139,107,255,.4); border-radius:10px; padding:10px 12px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:.95rem;">
+        <button class="shop-btn" id="profileSaveNickBtn" data-i18n="lb_save_btn">SAQLASH</button>
+      </div>
+      <div id="profileStatus" style="font-size:.8rem; color:var(--muted); margin:0 0 16px; min-height:1.2em;"></div>
+      <button class="cta" id="profileSignOutBtn" style="background:rgba(255,255,255,.08); color:var(--text); box-shadow:none; margin-bottom:12px;" data-i18n="lb_signout_btn">CHIQISH</button>
+      <button class="cta" id="closeProfileBtn" style="background:transparent; color:var(--muted); box-shadow:none; border:1px solid rgba(255,255,255,.14);" data-i18n="close_btn">ORQAGA</button>
     </div>
   </div>
 
@@ -504,7 +504,7 @@
       updateAuthUI();
       // fresh sign-in (not a page-reload session restore) and no nickname yet - ask for one right away
       if(event === "SIGNED_IN" && sbUser && !nickname){
-        openLeaderboard();
+        openProfile();
       }
     });
   }
@@ -603,7 +603,8 @@
       auth_eyebrow: "Hisob", auth_title: "KIRISH", auth_google_btn: "GOOGLE ORQALI KIRISH", auth_or: "yoki email bilan",
       auth_email_placeholder: "Email", auth_password_placeholder: "Parol",
       auth_submit_btn: "KIRISH / RO'YXATDAN O'TISH",
-      auth_missing_fields: "Email va parolni kiriting.", auth_confirm_email: "Emailingizni tasdiqlash havolasi yuborildi."
+      auth_missing_fields: "Email va parolni kiriting.", auth_confirm_email: "Emailingizni tasdiqlash havolasi yuborildi.",
+      profile_eyebrow: "Profil", profile_title: "HISOBIM"
     },
     en: {
       eyebrow: "Online arcade - 3D",
@@ -635,7 +636,8 @@
       auth_eyebrow: "Account", auth_title: "SIGN IN", auth_google_btn: "CONTINUE WITH GOOGLE", auth_or: "or with email",
       auth_email_placeholder: "Email", auth_password_placeholder: "Password",
       auth_submit_btn: "SIGN IN / REGISTER",
-      auth_missing_fields: "Enter an email and password.", auth_confirm_email: "A confirmation link was sent to your email."
+      auth_missing_fields: "Enter an email and password.", auth_confirm_email: "A confirmation link was sent to your email.",
+      profile_eyebrow: "Profile", profile_title: "MY ACCOUNT"
     },
     ru: {
       eyebrow: "Онлайн-аркада - 3D",
@@ -667,7 +669,8 @@
       auth_eyebrow: "Аккаунт", auth_title: "ВХОД", auth_google_btn: "ВОЙТИ ЧЕРЕЗ GOOGLE", auth_or: "или через email",
       auth_email_placeholder: "Email", auth_password_placeholder: "Пароль",
       auth_submit_btn: "ВОЙТИ / РЕГИСТРАЦИЯ",
-      auth_missing_fields: "Введите email и пароль.", auth_confirm_email: "Ссылка для подтверждения отправлена на почту."
+      auth_missing_fields: "Введите email и пароль.", auth_confirm_email: "Ссылка для подтверждения отправлена на почту.",
+      profile_eyebrow: "Профиль", profile_title: "МОЙ АККАУНТ"
     }
   };
   function detectDeviceLang(){
@@ -1456,60 +1459,53 @@
   var shopReturnOverlay = null;
 
   var leaderboardOverlay = document.getElementById("leaderboardOverlay");
+  var profileOverlay = document.getElementById("profileOverlay");
   var authOverlay = document.getElementById("authOverlay");
 
   function updateAuthUI(){
-    var loggedOut = document.getElementById("lbLoggedOut");
-    var loggedIn = document.getElementById("lbLoggedIn");
     var startAuthBtn = document.getElementById("startAuthBtn");
     var badge = document.getElementById("profileBadge");
-    if(!loggedOut || !loggedIn) return; // DOM not ready yet
+    if(!startAuthBtn || !badge) return; // DOM not ready yet
     if(sbUser){
-      loggedOut.classList.add("hidden");
-      loggedIn.classList.remove("hidden");
-      document.getElementById("lbUserEmail").textContent = sbUser.email || "";
-      document.getElementById("lbNickInput").value = nickname || (sbUser.email ? sbUser.email.split("@")[0] : "");
-      if(startAuthBtn) startAuthBtn.style.display = "none";
-      if(badge){
-        badge.style.display = "flex";
-        var label = nickname || (sbUser.email ? sbUser.email.split("@")[0] : "?");
-        badge.textContent = label.slice(0,10);
-        badge.title = sbUser.email || "";
-      }
+      startAuthBtn.style.display = "none";
+      badge.style.display = "flex";
+      var label = nickname || (sbUser.email ? sbUser.email.split("@")[0] : "?");
+      badge.textContent = label.slice(0,10);
+      badge.title = sbUser.email || "";
     } else {
-      loggedOut.classList.remove("hidden");
-      loggedIn.classList.add("hidden");
-      if(startAuthBtn) startAuthBtn.style.display = "";
-      if(badge) badge.style.display = "none";
+      startAuthBtn.style.display = "";
+      badge.style.display = "none";
     }
   }
 
   function openLeaderboard(){
-    updateAuthUI();
     leaderboardOverlay.classList.remove("hidden");
     renderLeaderboard();
   }
   function closeLeaderboard(){ leaderboardOverlay.classList.add("hidden"); }
+
+  function openProfile(){
+    if(!sbUser) return;
+    document.getElementById("profileEmail").textContent = sbUser.email || "";
+    document.getElementById("profileNickInput").value = nickname || (sbUser.email ? sbUser.email.split("@")[0] : "");
+    document.getElementById("profileStatus").textContent = "";
+    profileOverlay.classList.remove("hidden");
+  }
+  function closeProfile(){ profileOverlay.classList.add("hidden"); }
   function saveNicknameFromInput(){
-    var v = document.getElementById("lbNickInput").value.trim().slice(0,20);
+    var v = document.getElementById("profileNickInput").value.trim().slice(0,20);
     nickname = v;
     saveNick(v);
-    var statusEl = document.getElementById("lbStatus");
+    var statusEl = document.getElementById("profileStatus");
     if(statusEl && v) statusEl.textContent = t("lb_nick_saved");
     updateAuthUI();
   }
 
-  var authReturnToLeaderboard = false;
-  function openAuth(fromLeaderboard){
-    authReturnToLeaderboard = !!fromLeaderboard;
+  function openAuth(){
     document.getElementById("authStatus").textContent = "";
-    leaderboardOverlay.classList.add("hidden");
     authOverlay.classList.remove("hidden");
   }
-  function closeAuth(){
-    authOverlay.classList.add("hidden");
-    if(authReturnToLeaderboard) openLeaderboard();
-  }
+  function closeAuth(){ authOverlay.classList.add("hidden"); }
 
   function handleAuthSubmit(){
     var email = document.getElementById("authEmail").value.trim();
@@ -1807,11 +1803,11 @@
   document.getElementById("closeShopBtn").addEventListener("click", closeShop);
   document.getElementById("openLeaderboardBtn").addEventListener("click", openLeaderboard);
   document.getElementById("closeLeaderboardBtn").addEventListener("click", closeLeaderboard);
-  document.getElementById("lbSaveNickBtn").addEventListener("click", saveNicknameFromInput);
-  document.getElementById("lbOpenAuthBtn").addEventListener("click", function(){ openAuth(true); });
-  document.getElementById("startAuthBtn").addEventListener("click", function(){ openAuth(false); });
-  document.getElementById("profileBadge").addEventListener("click", openLeaderboard);
-  document.getElementById("lbSignOutBtn").addEventListener("click", function(){ signOutUser().then(function(){ renderLeaderboard(); }); });
+  document.getElementById("profileSaveNickBtn").addEventListener("click", saveNicknameFromInput);
+  document.getElementById("profileSignOutBtn").addEventListener("click", function(){ signOutUser().then(closeProfile); });
+  document.getElementById("closeProfileBtn").addEventListener("click", closeProfile);
+  document.getElementById("startAuthBtn").addEventListener("click", openAuth);
+  document.getElementById("profileBadge").addEventListener("click", openProfile);
   document.getElementById("closeAuthBtn").addEventListener("click", closeAuth);
   document.getElementById("authSubmitBtn").addEventListener("click", handleAuthSubmit);
   document.getElementById("googleAuthBtn").addEventListener("click", function(){
