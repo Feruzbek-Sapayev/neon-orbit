@@ -742,11 +742,27 @@
     return false;
   })();
 
-  var renderer = new THREE.WebGLRenderer({ antialias:!LOW_END, alpha:false, powerPreference:"high-performance" });
-  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, LOW_END ? 1 : 2));
+  var renderer = new THREE.WebGLRenderer({ antialias:false, alpha:false, powerPreference:"high-performance" });
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, LOW_END ? 1 : 1.5));
   renderer.setSize(app.clientWidth, app.clientHeight);
   renderer.setClearColor(0x05060d, 1);
   app.insertBefore(renderer.domElement, app.firstChild);
+
+  /* runtime FPS watchdog: if the frame rate is still low on this machine no matter
+     what the hardware heuristic guessed, drop to the cheapest settings for good */
+  var fpsSamples = 0, fpsBadStreak = 0, downgraded = false;
+  function watchFps(dt){
+    if(downgraded) return;
+    fpsSamples++;
+    if(fpsSamples <= 30) return; // let things settle after a scene change
+    fpsBadStreak = dt > 1/28 ? fpsBadStreak + 1 : 0;
+    if(fpsBadStreak > 45){
+      downgraded = true;
+      renderer.setPixelRatio(1);
+      if(rimLight) rimLight.visible = false;
+      rings.slice(Math.ceil(rings.length/2)).forEach(function(rg){ rg.visible = false; });
+    }
+  }
 
   window.addEventListener("resize", function(){
     camera.aspect = app.clientWidth / app.clientHeight;
@@ -1021,25 +1037,25 @@
 
   var SKINS = [
     { id:"neon", name:"Neon Orbit", cost:0, glow:0x2fe6c8, light:0x2fe6c8,
-      build:function(){ return new THREE.MeshStandardMaterial({ color:0x2fe6c8, emissive:0x1de6c0, emissiveIntensity:1.6, roughness:0.2, metalness:0.4 }); },
+      build:function(){ return new THREE.MeshPhongMaterial({ color:0x2fe6c8, emissive:0x1de6c0, emissiveIntensity:1.6 }); },
       geo:function(){ return new THREE.IcosahedronGeometry(0.42, 1); } },
     { id:"football", name:"Futbol to'pi", cost:60, glow:0xf4f6fb, light:0xffffff, previewUrl:footballTex.previewUrl,
-      build:function(){ return new THREE.MeshStandardMaterial({ map:footballTex, roughness:0.55, metalness:0.05 }); },
+      build:function(){ return new THREE.MeshPhongMaterial({ map:footballTex }); },
       geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
     { id:"basketball", name:"Basketbol to'pi", cost:90, glow:0xff9d3d, light:0xff9d3d, previewUrl:basketballTex.previewUrl,
-      build:function(){ return new THREE.MeshStandardMaterial({ map:basketballTex, roughness:0.6, metalness:0.05 }); },
+      build:function(){ return new THREE.MeshPhongMaterial({ map:basketballTex }); },
       geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
     { id:"ice", name:"Muz shari", cost:130, glow:0x9fe3ff, light:0x9fe3ff, previewUrl:iceTex.previewUrl,
-      build:function(){ return new THREE.MeshStandardMaterial({ map:iceTex, roughness:0.1, metalness:0.5, emissive:0x4fb8e0, emissiveIntensity:0.8 }); },
+      build:function(){ return new THREE.MeshPhongMaterial({ map:iceTex, emissive:0x4fb8e0, emissiveIntensity:0.8 }); },
       geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
     { id:"fire", name:"Olov shari", cost:170, glow:0xff6a2b, light:0xff6a2b, previewUrl:fireTex.previewUrl,
-      build:function(){ return new THREE.MeshStandardMaterial({ map:fireTex, emissiveMap:fireTex, roughness:0.5, metalness:0.05, emissive:0xffffff, emissiveIntensity:1.6 }); },
+      build:function(){ return new THREE.MeshPhongMaterial({ map:fireTex, emissiveMap:fireTex, emissive:0xffffff, emissiveIntensity:1.6 }); },
       geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
     { id:"earth", name:"Sayyora Yer", cost:150, glow:0x4a90d9, light:0x4a90d9, previewUrl:earthTex.previewUrl,
-      build:function(){ return new THREE.MeshStandardMaterial({ map:earthTex, roughness:0.6, metalness:0.05 }); },
+      build:function(){ return new THREE.MeshPhongMaterial({ map:earthTex }); },
       geo:function(){ return new THREE.SphereGeometry(0.44, 28, 20); } },
     { id:"saturn", name:"Halqali sayyora", cost:220, glow:0xd9b473, light:0xe9cd97, previewUrl:saturnTex.previewUrl,
-      build:function(){ return new THREE.MeshStandardMaterial({ map:saturnTex, roughness:0.65, metalness:0.05 }); },
+      build:function(){ return new THREE.MeshPhongMaterial({ map:saturnTex }); },
       geo:function(){ return new THREE.SphereGeometry(0.4, 28, 20); },
       decorate:function(core){
         var ring = new THREE.Mesh(
@@ -1079,23 +1095,23 @@
   var RECYCLE_Z = 9;
 
   var obstGeoBlock = new THREE.IcosahedronGeometry(0.3, 0);
-  var obstMatBlock = new THREE.MeshStandardMaterial({ color:0xff3366, emissive:0xb01438, emissiveIntensity:1.7, roughness:0.3 });
+  var obstMatBlock = new THREE.MeshPhongMaterial({ color:0xff3366, emissive:0xb01438, emissiveIntensity:1.7 });
   var spikeMiniGeo = new THREE.ConeGeometry(0.08, 0.32, 5);
   var mineDirs = [[0,1,0],[0,-1,0],[1,0,0],[-1,0,0],[0,0,1],[0,0,-1]];
 
   var hurdleGeo = new THREE.BoxGeometry(6.2, 0.5, 0.4);
-  var hurdleMat = new THREE.MeshStandardMaterial({ color:0xffdd3d, emissive:0xc48b00, emissiveIntensity:1.5, roughness:0.35 });
+  var hurdleMat = new THREE.MeshPhongMaterial({ color:0xffdd3d, emissive:0xc48b00, emissiveIntensity:1.5 });
   var pylonGeo = new THREE.CylinderGeometry(0.1, 0.1, 1.7, 6);
 
   var spikeGeo = new THREE.ConeGeometry(0.4, 1.7, 6);
-  var spikeMat = new THREE.MeshStandardMaterial({ color:0xc93dff, emissive:0x8a17c2, emissiveIntensity:1.7, roughness:0.25 });
+  var spikeMat = new THREE.MeshPhongMaterial({ color:0xc93dff, emissive:0x8a17c2, emissiveIntensity:1.7 });
 
   var droneCoreGeo = new THREE.IcosahedronGeometry(0.28, 0);
   var droneRingGeo = new THREE.TorusGeometry(0.46, 0.045, 6, 16);
-  var droneMat = new THREE.MeshStandardMaterial({ color:0xffaa33, emissive:0xcc6a00, emissiveIntensity:1.7, roughness:0.25 });
+  var droneMat = new THREE.MeshPhongMaterial({ color:0xffaa33, emissive:0xcc6a00, emissiveIntensity:1.7 });
 
   var shardGeo = new THREE.OctahedronGeometry(0.26, 0);
-  var shardMat = new THREE.MeshStandardMaterial({ color:0x2fe6c8, emissive:0x1de6c0, emissiveIntensity:1.6, roughness:0.15, metalness:0.3 });
+  var shardMat = new THREE.MeshPhongMaterial({ color:0x2fe6c8, emissive:0x1de6c0, emissiveIntensity:1.6 });
 
   var pool = []; // active spawned objects: {mesh, type, lane, z, alive}
 
@@ -1578,6 +1594,7 @@
   function tick(){
     requestAnimationFrame(tick);
     var dt = Math.min(clock.getDelta(), 0.05);
+    watchFps(dt);
 
     // idle camera drift on menu/over
     if(state !== STATE.PLAY){
