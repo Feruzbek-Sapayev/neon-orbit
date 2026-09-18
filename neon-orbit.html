@@ -159,6 +159,11 @@
   }
   .shop-btn:hover{ background:rgba(139,107,255,.28); }
 
+  .text-link{
+    font-size:.78rem; color:var(--muted); text-decoration:underline; cursor:pointer;
+  }
+  .text-link:hover{ color:var(--accent-2); }
+
   .shop-card{ width:min(560px,94vw); }
 
   .ad-card{ width:min(380px,92vw); }
@@ -284,7 +289,6 @@
 <div id="app">
   <div class="flash" id="flash"></div>
   <div id="topControls">
-    <div id="profileBadge" class="icon-btn lang-btn" style="display:none;" title="Profil"></div>
     <div id="muteBtn" class="icon-btn">&#128266;</div>
     <div id="langBtn" class="icon-btn lang-btn">UZ</div>
     <div id="pauseBtn" class="icon-btn">&#9208;</div>
@@ -341,6 +345,10 @@
       <p class="record-tag" id="bestTagStart" style="display:none;"></p>
       <button class="cta" id="startBtn" data-i18n="start_btn">UCHISHNI BOSHLASH</button>
       <button class="cta" id="startAuthBtn" style="background:rgba(255,255,255,.08); color:var(--text); box-shadow:none; margin-top:10px;" data-i18n="lb_login_btn">KIRISH / RO'YXATDAN O'TISH</button>
+      <div id="accountLinks" style="display:none; justify-content:center; gap:16px; margin-top:12px;">
+        <span id="profileLink" class="text-link" data-i18n="profile_link">Profil</span>
+        <span id="logoutLink" class="text-link" data-i18n="lb_signout_btn">Chiqish</span>
+      </div>
     </div>
   </div>
 
@@ -604,7 +612,8 @@
       auth_email_placeholder: "Email", auth_password_placeholder: "Parol",
       auth_submit_btn: "KIRISH / RO'YXATDAN O'TISH",
       auth_missing_fields: "Email va parolni kiriting.", auth_confirm_email: "Emailingizni tasdiqlash havolasi yuborildi.",
-      profile_eyebrow: "Profil", profile_title: "HISOBIM"
+      profile_eyebrow: "Profil", profile_title: "HISOBIM", profile_link: "Profil",
+      nick_too_short: "Taxallus kamida 3 ta belgidan iborat bo'lishi kerak."
     },
     en: {
       eyebrow: "Online arcade - 3D",
@@ -637,7 +646,8 @@
       auth_email_placeholder: "Email", auth_password_placeholder: "Password",
       auth_submit_btn: "SIGN IN / REGISTER",
       auth_missing_fields: "Enter an email and password.", auth_confirm_email: "A confirmation link was sent to your email.",
-      profile_eyebrow: "Profile", profile_title: "MY ACCOUNT"
+      profile_eyebrow: "Profile", profile_title: "MY ACCOUNT", profile_link: "Profile",
+      nick_too_short: "Nickname must be at least 3 characters."
     },
     ru: {
       eyebrow: "Онлайн-аркада - 3D",
@@ -670,7 +680,8 @@
       auth_email_placeholder: "Email", auth_password_placeholder: "Пароль",
       auth_submit_btn: "ВОЙТИ / РЕГИСТРАЦИЯ",
       auth_missing_fields: "Введите email и пароль.", auth_confirm_email: "Ссылка для подтверждения отправлена на почту.",
-      profile_eyebrow: "Профиль", profile_title: "МОЙ АККАУНТ"
+      profile_eyebrow: "Профиль", profile_title: "МОЙ АККАУНТ", profile_link: "Профиль",
+      nick_too_short: "Никнейм должен содержать не менее 3 символов."
     }
   };
   function detectDeviceLang(){
@@ -1464,17 +1475,14 @@
 
   function updateAuthUI(){
     var startAuthBtn = document.getElementById("startAuthBtn");
-    var badge = document.getElementById("profileBadge");
-    if(!startAuthBtn || !badge) return; // DOM not ready yet
+    var accountLinks = document.getElementById("accountLinks");
+    if(!startAuthBtn || !accountLinks) return; // DOM not ready yet
     if(sbUser){
       startAuthBtn.style.display = "none";
-      badge.style.display = "flex";
-      var label = nickname || (sbUser.email ? sbUser.email.split("@")[0] : "?");
-      badge.textContent = label.slice(0,10);
-      badge.title = sbUser.email || "";
+      accountLinks.style.display = "flex";
     } else {
       startAuthBtn.style.display = "";
-      badge.style.display = "none";
+      accountLinks.style.display = "none";
     }
   }
 
@@ -1492,12 +1500,17 @@
     profileOverlay.classList.remove("hidden");
   }
   function closeProfile(){ profileOverlay.classList.add("hidden"); }
+  var NICK_MIN_LEN = 3, NICK_MAX_LEN = 20;
   function saveNicknameFromInput(){
-    var v = document.getElementById("profileNickInput").value.trim().slice(0,20);
+    var v = document.getElementById("profileNickInput").value.trim().slice(0, NICK_MAX_LEN);
+    var statusEl = document.getElementById("profileStatus");
+    if(v.length < NICK_MIN_LEN){
+      statusEl.textContent = t("nick_too_short");
+      return;
+    }
     nickname = v;
     saveNick(v);
-    var statusEl = document.getElementById("profileStatus");
-    if(statusEl && v) statusEl.textContent = t("lb_nick_saved");
+    statusEl.textContent = t("lb_nick_saved");
     updateAuthUI();
   }
 
@@ -1807,7 +1820,8 @@
   document.getElementById("profileSignOutBtn").addEventListener("click", function(){ signOutUser().then(closeProfile); });
   document.getElementById("closeProfileBtn").addEventListener("click", closeProfile);
   document.getElementById("startAuthBtn").addEventListener("click", openAuth);
-  document.getElementById("profileBadge").addEventListener("click", openProfile);
+  document.getElementById("profileLink").addEventListener("click", openProfile);
+  document.getElementById("logoutLink").addEventListener("click", function(){ signOutUser(); });
   document.getElementById("closeAuthBtn").addEventListener("click", closeAuth);
   document.getElementById("authSubmitBtn").addEventListener("click", handleAuthSubmit);
   document.getElementById("googleAuthBtn").addEventListener("click", function(){
