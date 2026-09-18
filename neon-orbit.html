@@ -486,6 +486,11 @@
   function loadBest(){
     try{ return parseInt(localStorage.getItem(STORAGE_KEY) || "0", 10) || 0; }catch(e){ return 0; }
   }
+  // NOTE: best/coins/owned skins/selected skin/keys are cached in localStorage
+  // for instant UI + guest/offline play, but once signed in they are only ever
+  // advanced by the server RPCs in the "profile sync" block below - these
+  // save* helpers no longer push their value to Supabase directly, so editing
+  // localStorage by hand can't grant coins/skins/keys on a signed-in account.
   function saveBest(v){
     try{ localStorage.setItem(STORAGE_KEY, String(v)); }catch(e){}
   }
@@ -520,7 +525,7 @@
   /* ===================== account + leaderboard (Supabase) ===================== */
   var NICK_KEY = "neon-orbit-nick";
   function loadNick(){ try{ return localStorage.getItem(NICK_KEY) || ""; }catch(e){ return ""; } }
-  function saveNick(v){ try{ localStorage.setItem(NICK_KEY, v); }catch(e){} }
+  function saveNick(v){ try{ localStorage.setItem(NICK_KEY, v); }catch(e){} syncPrefs(); }
   var nickname = loadNick();
 
   var SUPABASE_URL = "https://habflwaewospaoegtcyk.supabase.co";
@@ -529,18 +534,91 @@
     ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
     : null;
   var sbUser = null; // current Supabase auth user, or null when signed out
+  var hadAccountThisSession = false; // tracks whether a *different* account was already active, so a second login on this device never inherits the first one's local numbers
+
+  /* ===================== profile sync (Supabase) ===================== */
+  // coins / owned skins / selected skin / keys / best score are never written to
+  // the server directly by the client (the DB grants block that - see
+  // supabase_shop_security.sql) - they only change through the RPC calls below,
+  // which check the *stored* balance server-side. That is what stops someone
+  // from editing localStorage (or the in-memory vars) to buy things for free.
+  // Only harmless prefs (nickname/lang/muted) are synced with a plain update.
+  var prefsSyncTimer = null;
+  function syncPrefs(){
+    if(!sb || !sbUser) return; // signed out - stays local-only in localStorage
+    clearTimeout(prefsSyncTimer);
+    prefsSyncTimer = setTimeout(function(){
+      sb.from(PROFILE_TABLE).update({ nickname: nickname || null, lang: lang, muted: muted }).eq("user_id", sbUser.id).then(function(res){
+        if(res.error) console.warn("prefs sync failed:", res.error.message);
+      });
+    }, 400);
+  }
+  var PROFILE_TABLE = "profiles";
+
+  function applyServerRow(row){
+    // hard overwrite (never "keep the higher one") so switching accounts on the
+    // same device can never leak one account's coins/score into another's
+    best = typeof row.best_score === "number" ? row.best_score : 0;
+    coins = typeof row.coins === "number" ? row.coins : 0;
+    ownedSkins = (Array.isArray(row.owned_skins) && row.owned_skins.length) ? row.owned_skins : ["neon"];
+    selectedSkin = row.selected_skin || "neon";
+    keyCount = typeof row.keys === "number" ? row.keys : 0;
+    nickname = row.nickname || "";
+    if(row.lang && LANGS.indexOf(row.lang) !== -1) lang = row.lang;
+    if(typeof row.muted === "boolean") muted = row.muted;
+    try{
+      localStorage.setItem(STORAGE_KEY, String(best));
+      localStorage.setItem(COINS_KEY, String(coins));
+      localStorage.setItem(OWNED_KEY, JSON.stringify(ownedSkins));
+      localStorage.setItem(SKIN_KEY, selectedSkin);
+      localStorage.setItem(KEYS_KEY, String(keyCount));
+      localStorage.setItem(NICK_KEY, nickname);
+      localStorage.setItem("neon-orbit-lang", lang);
+      localStorage.setItem("neon-orbit-muted", muted ? "1" : "0");
+    }catch(e){}
+    if(typeof applySkin === "function") applySkin(selectedSkin);
+    if(masterGain) masterGain.gain.value = muted ? 0 : 1;
+    if(typeof updateCoinDisplays === "function") updateCoinDisplays();
+    if(typeof updateKeyDisplays === "function") updateKeyDisplays();
+    if(typeof updateBestTag === "function") updateBestTag();
+    if(typeof applyI18n === "function") applyI18n();
+  }
+
+  function resetLocalProgressToDefaults(){
+    applyServerRow({ best_score:0, coins:0, owned_skins:["neon"], selected_skin:"neon", keys:0, nickname:"", lang:lang, muted:muted });
+  }
+
+  function loadProfileFromServer(){
+    if(!sb || !sbUser) return;
+    if(hadAccountThisSession){
+      // a different account may have been signed in before this one on this
+      // device - clear its leftover numbers before pulling the new account's row
+      resetLocalProgressToDefaults();
+    }
+    hadAccountThisSession = true;
+    sb.rpc("ensure_profile").then(function(res){
+      if(res.error){ console.warn("profile load failed:", res.error.message); return; }
+      if(res.data) applyServerRow(res.data);
+    });
+  }
 
   if(sb){
     sb.auth.getSession().then(function(res){
       sbUser = (res && res.data && res.data.session && res.data.session.user) || null;
       updateAuthUI();
+      if(sbUser) loadProfileFromServer();
     });
     sb.auth.onAuthStateChange(function(event, session){
+      if(event === "SIGNED_OUT"){
+        resetLocalProgressToDefaults();
+        hadAccountThisSession = true;
+      }
       sbUser = (session && session.user) || null;
       updateAuthUI();
-      // fresh sign-in (not a page-reload session restore) and no nickname yet - ask for one right away
-      if(event === "SIGNED_IN" && sbUser && !nickname){
-        openProfile();
+      if(event === "SIGNED_IN" && sbUser){
+        loadProfileFromServer();
+        // fresh sign-in (not a page-reload session restore) and no nickname yet - ask for one right away
+        if(!nickname) openProfile();
       }
     });
   }
@@ -558,16 +636,20 @@
     return sb.auth.signOut();
   }
 
-  function submitScore(finalScore, finalDistance){
-    if(!sb || !sbUser) return; // must be logged in to appear on the leaderboard
+  // settles a finished run server-side in one atomic call: credits the coins
+  // actually picked up this run, raises best_score if beaten, and posts to the
+  // leaderboard - all validated against the stored balance, not the client's copy
+  function awardRunResult(coinsEarned, finalScore, finalDistance){
+    if(!sb || !sbUser) return; // not signed in - run stays local-only, nothing to submit
     var nick = (nickname || sbUser.email.split("@")[0] || "player").trim().slice(0,20);
-    sb.from("scores").insert({
-      user_id: sbUser.id,
-      nickname: nick,
-      score: Math.max(0, Math.floor(finalScore)),
-      distance: Math.max(0, finalDistance)
+    sb.rpc("award_run_result", {
+      p_coins_earned: Math.max(0, Math.floor(coinsEarned)),
+      p_score: Math.max(0, Math.floor(finalScore)),
+      p_distance: Math.max(0, finalDistance),
+      p_nickname: nick
     }).then(function(res){
-      if(res.error) console.warn("score submit failed:", res.error.message);
+      if(res.error){ console.warn("run settle failed:", res.error.message); return; }
+      if(res.data) applyServerRow(res.data);
     });
   }
 
@@ -744,14 +826,14 @@
     }catch(e){}
     return detectDeviceLang();
   }
-  function saveLang(v){ try{ localStorage.setItem("neon-orbit-lang", v); }catch(e){} }
+  function saveLang(v){ try{ localStorage.setItem("neon-orbit-lang", v); }catch(e){} syncPrefs(); }
   var lang = loadLang();
   function t(key){ return (I18N[lang] && I18N[lang][key]) || I18N.uz[key] || key; }
 
   /* ===================== audio engine ===================== */
   var actx = null, masterGain = null, sfxBus = null, musicBus = null;
   function loadMuted(){ try{ return localStorage.getItem("neon-orbit-muted") === "1"; }catch(e){ return false; } }
-  function saveMuted(v){ try{ localStorage.setItem("neon-orbit-muted", v ? "1" : "0"); }catch(e){} }
+  function saveMuted(v){ try{ localStorage.setItem("neon-orbit-muted", v ? "1" : "0"); }catch(e){} syncPrefs(); }
   var muted = loadMuted();
 
   function ac(){
@@ -1521,6 +1603,7 @@
 
   function buyKey(){
     var buyBtn = document.getElementById("buyKeyBtn");
+    if(!sbUser){ openAuth(); return; }
     if(coins < KEY_COST_COINS){
       var original = buyBtn.textContent;
       buyBtn.textContent = t("key_need_coins");
@@ -1528,12 +1611,19 @@
       return;
     }
     showAd(function(){
-      coins -= KEY_COST_COINS;
-      saveCoins(coins);
-      keyCount += 1;
-      saveKeys(keyCount);
-      updateCoinDisplays();
-      updateKeyDisplays();
+      // the coin/key change is only applied once the server confirms the
+      // stored balance actually covers the cost - a tampered local `coins`
+      // value can't buy anything on its own
+      sb.rpc("buy_revive_key", { p_cost: KEY_COST_COINS }).then(function(res){
+        if(res.error || !res.data){
+          loadProfileFromServer(); // resync true state in case local was stale
+          var original = buyBtn.textContent;
+          buyBtn.textContent = t("key_need_coins");
+          setTimeout(function(){ buyBtn.textContent = original; }, 1600);
+          return;
+        }
+        applyServerRow(res.data);
+      });
     });
   }
 
@@ -1649,10 +1739,19 @@
         btn.className = "skin-buy owned";
         btn.textContent = t("select_btn");
         btn.addEventListener("click", function(){
-          selectedSkin = skin.id;
-          saveSkin(selectedSkin);
-          applySkin(selectedSkin);
-          renderShop();
+          if(!sbUser){
+            // no account, no server-verified ownership - fall back to local-only (offline/guest) selection
+            selectedSkin = skin.id;
+            saveSkin(selectedSkin);
+            applySkin(selectedSkin);
+            renderShop();
+            return;
+          }
+          sb.rpc("select_owned_skin", { p_skin_id: skin.id }).then(function(res){
+            if(res.error || !res.data){ loadProfileFromServer(); renderShop(); return; }
+            applyServerRow(res.data);
+            renderShop();
+          });
         });
       } else {
         btn.className = "skin-buy";
@@ -1660,15 +1759,14 @@
         btn.disabled = coins < skin.cost;
         btn.addEventListener("click", function(){
           if(coins < skin.cost) return;
-          coins -= skin.cost;
-          saveCoins(coins);
-          ownedSkins.push(skin.id);
-          saveOwned(ownedSkins);
-          selectedSkin = skin.id;
-          saveSkin(selectedSkin);
-          applySkin(selectedSkin);
-          updateCoinDisplays();
-          renderShop();
+          if(!sbUser){ openAuth(); return; } // purchases require an account so the balance is server-verified
+          // server checks the *stored* coin balance, so editing localStorage
+          // or the in-memory `coins` var beforehand cannot buy this for free
+          sb.rpc("buy_skin", { p_skin_id: skin.id, p_cost: skin.cost }).then(function(res){
+            if(res.error || !res.data){ loadProfileFromServer(); renderShop(); return; }
+            applyServerRow(res.data);
+            renderShop();
+          });
         });
       }
       card.appendChild(btn);
@@ -1809,15 +1907,16 @@
     pauseBtn.classList.remove("live");
     var finalScore = score;
     var isRecord = finalScore > best;
-    if(isRecord){ best = finalScore; saveBest(best); }
+    var coinsEarnedThisRun = coins - runStartCoins;
+    if(isRecord){ best = finalScore; saveBest(best); } // optimistic local update; the server call below is authoritative for signed-in accounts
     document.getElementById("finalDistance").textContent = Math.floor(distance) + " " + t("distance_unit");
     document.getElementById("finalScore").textContent = finalScore;
     document.getElementById("finalBest").textContent = best;
     document.getElementById("newRecordTag").style.display = isRecord ? "block" : "none";
-    document.getElementById("finalCoinsGained").textContent = "+" + (coins - runStartCoins);
+    document.getElementById("finalCoinsGained").textContent = "+" + coinsEarnedThisRun;
     updateBestTag();
     updateCoinDisplays();
-    submitScore(finalScore, distance);
+    awardRunResult(coinsEarnedThisRun, finalScore, distance);
     showAd(function(){ overOverlay.classList.remove("hidden"); });
   }
 
@@ -1846,14 +1945,26 @@
     }
   }
   function reviveWithKey(){
-    keyCount -= 1;
-    saveKeys(keyCount);
-    updateKeyDisplays();
-    lives = 1;
-    invincible = 1.6;
-    renderLives();
-    reviveOverlay.classList.add("hidden");
-    paused = false;
+    function grantRevive(){
+      lives = 1;
+      invincible = 1.6;
+      renderLives();
+      reviveOverlay.classList.add("hidden");
+      paused = false;
+    }
+    if(sbUser){
+      // spend the key server-side so a tampered local keyCount can't buy unlimited revives
+      sb.rpc("use_revive_key").then(function(res){
+        if(res.error || !res.data){ loadProfileFromServer(); declineRevive(); return; }
+        applyServerRow(res.data);
+        grantRevive();
+      });
+    } else {
+      keyCount -= 1;
+      saveKeys(keyCount);
+      updateKeyDisplays();
+      grantRevive();
+    }
   }
   function declineRevive(){
     reviveOverlay.classList.add("hidden");
