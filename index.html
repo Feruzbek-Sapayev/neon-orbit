@@ -438,8 +438,7 @@
       <input id="authPassword" type="password" placeholder="Parol" data-i18n-placeholder="auth_password_placeholder"
         style="width:100%; margin:0 0 16px; background:rgba(255,255,255,.05); border:1px solid rgba(139,107,255,.4); border-radius:10px; padding:12px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:.95rem;">
       <div id="authStatus" style="font-size:.78rem; color:var(--muted); margin:0 0 14px; min-height:1.2em;"></div>
-      <button class="cta" id="authSignInBtn" style="margin-bottom:10px;" data-i18n="auth_signin_btn">KIRISH</button>
-      <button class="cta" id="authSignUpBtn" style="background:rgba(255,255,255,.08); color:var(--text); box-shadow:none; margin-bottom:12px;" data-i18n="auth_signup_btn">RO'YXATDAN O'TISH</button>
+      <button class="cta" id="authSubmitBtn" style="margin-bottom:12px;" data-i18n="auth_submit_btn">KIRISH / RO'YXATDAN O'TISH</button>
       <button class="cta" id="closeAuthBtn" style="background:transparent; color:var(--muted); box-shadow:none; border:1px solid rgba(255,255,255,.14);" data-i18n="close_btn">ORQAGA</button>
     </div>
   </div>
@@ -597,7 +596,7 @@
       lb_signed_in_as: "Kirgan hisob:", lb_signout_btn: "CHIQISH",
       auth_eyebrow: "Hisob", auth_title: "KIRISH", auth_google_btn: "GOOGLE ORQALI KIRISH", auth_or: "yoki email bilan",
       auth_email_placeholder: "Email", auth_password_placeholder: "Parol",
-      auth_signin_btn: "KIRISH", auth_signup_btn: "RO'YXATDAN O'TISH",
+      auth_submit_btn: "KIRISH / RO'YXATDAN O'TISH",
       auth_missing_fields: "Email va parolni kiriting.", auth_confirm_email: "Emailingizni tasdiqlash havolasi yuborildi."
     },
     en: {
@@ -629,7 +628,7 @@
       lb_signed_in_as: "Signed in as:", lb_signout_btn: "SIGN OUT",
       auth_eyebrow: "Account", auth_title: "SIGN IN", auth_google_btn: "CONTINUE WITH GOOGLE", auth_or: "or with email",
       auth_email_placeholder: "Email", auth_password_placeholder: "Password",
-      auth_signin_btn: "SIGN IN", auth_signup_btn: "REGISTER",
+      auth_submit_btn: "SIGN IN / REGISTER",
       auth_missing_fields: "Enter an email and password.", auth_confirm_email: "A confirmation link was sent to your email."
     },
     ru: {
@@ -661,7 +660,7 @@
       lb_signed_in_as: "Вы вошли как:", lb_signout_btn: "ВЫЙТИ",
       auth_eyebrow: "Аккаунт", auth_title: "ВХОД", auth_google_btn: "ВОЙТИ ЧЕРЕЗ GOOGLE", auth_or: "или через email",
       auth_email_placeholder: "Email", auth_password_placeholder: "Пароль",
-      auth_signin_btn: "ВОЙТИ", auth_signup_btn: "РЕГИСТРАЦИЯ",
+      auth_submit_btn: "ВОЙТИ / РЕГИСТРАЦИЯ",
       auth_missing_fields: "Введите email и пароль.", auth_confirm_email: "Ссылка для подтверждения отправлена на почту."
     }
   };
@@ -1492,21 +1491,22 @@
     openLeaderboard();
   }
 
-  function handleAuthSubmit(mode){
+  function handleAuthSubmit(){
     var email = document.getElementById("authEmail").value.trim();
     var password = document.getElementById("authPassword").value;
     var statusEl = document.getElementById("authStatus");
     if(!sb){ statusEl.textContent = t("lb_unavailable"); return; }
     if(!email || !password){ statusEl.textContent = t("auth_missing_fields"); return; }
     statusEl.textContent = t("lb_loading");
-    var action = mode === "signup" ? signUp(email, password) : signIn(email, password);
-    action.then(function(res){
-      if(res.error){ statusEl.textContent = res.error.message; return; }
-      if(mode === "signup" && !(res.data && res.data.session)){
-        statusEl.textContent = t("auth_confirm_email");
-        return;
-      }
-      closeAuth();
+    // one button covers both cases: try signing in to an existing account first,
+    // and if that fails, register this as a brand-new account instead
+    signIn(email, password).then(function(res){
+      if(!res.error){ closeAuth(); return; }
+      return signUp(email, password).then(function(res2){
+        if(res2.error){ statusEl.textContent = res2.error.message; return; }
+        if(!(res2.data && res2.data.session)){ statusEl.textContent = t("auth_confirm_email"); return; }
+        closeAuth();
+      });
     });
   }
 
@@ -1790,8 +1790,7 @@
   document.getElementById("lbOpenAuthBtn").addEventListener("click", openAuth);
   document.getElementById("lbSignOutBtn").addEventListener("click", function(){ signOutUser().then(function(){ renderLeaderboard(); }); });
   document.getElementById("closeAuthBtn").addEventListener("click", closeAuth);
-  document.getElementById("authSignInBtn").addEventListener("click", function(){ handleAuthSubmit("signin"); });
-  document.getElementById("authSignUpBtn").addEventListener("click", function(){ handleAuthSubmit("signup"); });
+  document.getElementById("authSubmitBtn").addEventListener("click", handleAuthSubmit);
   document.getElementById("googleAuthBtn").addEventListener("click", function(){
     if(!sb) return;
     signInGoogle();
