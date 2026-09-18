@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Neon Orbit</title>
-<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self'; object-src 'none'; base-uri 'self';">
+<meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://cdn.jsdelivr.net; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; img-src 'self' data:; connect-src 'self' https://habflwaewospaoegtcyk.supabase.co; object-src 'none'; base-uri 'self';">
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <style>
   :root{
@@ -138,7 +138,7 @@
 
   .coin-row{
     display:flex; align-items:center; justify-content:space-between; gap:10px;
-    margin:0 0 18px;
+    margin:0 0 18px; flex-wrap:wrap;
   }
   .coin-badge{
     display:inline-flex; align-items:center; gap:7px;
@@ -334,6 +334,7 @@
       <div class="coin-row">
         <span class="coin-badge"><span class="coin-dot"></span><span id="coinTotalStart">0</span> <span data-i18n="coin_suffix">tanga</span></span>
         <button class="shop-btn" id="openShopBtn" data-i18n="shop_btn">DO'KON</button>
+        <button class="shop-btn" id="openLeaderboardBtn" data-i18n="leaderboard_btn">REYTING</button>
       </div>
       <p class="record-tag" id="bestTagStart" style="display:none;"></p>
       <button class="cta" id="startBtn" data-i18n="start_btn">UCHISHNI BOSHLASH</button>
@@ -398,9 +399,53 @@
       <button class="cta" id="closeShopBtn" style="margin-top:20px;" data-i18n="close_btn">ORQAGA</button>
     </div>
   </div>
+
+  <div class="overlay hidden" id="leaderboardOverlay">
+    <div class="card shop-card">
+      <p class="eyebrow" data-i18n="lb_eyebrow">Dunyo reytingi</p>
+      <h1 class="title glow-title" style="font-size:clamp(1.4rem,6vw,1.9rem);" data-i18n="lb_title">TOP O'YINCHILAR</h1>
+
+      <div id="lbLoggedOut" style="margin:0 0 18px;">
+        <p style="font-size:.85rem; color:var(--muted); margin:0 0 10px;" data-i18n="lb_login_prompt">Reytingda ko'rinish uchun hisobga kiring.</p>
+        <button class="cta" id="lbOpenAuthBtn" data-i18n="lb_login_btn">KIRISH / RO'YXATDAN O'TISH</button>
+      </div>
+
+      <div id="lbLoggedIn" class="hidden" style="margin:0 0 18px;">
+        <p style="font-size:.8rem; color:var(--muted); margin:0 0 10px;"><span data-i18n="lb_signed_in_as">Kirgan hisob:</span> <span id="lbUserEmail" style="color:var(--text);"></span></p>
+        <div style="display:flex; gap:8px; margin:0 0 8px;">
+          <input id="lbNickInput" type="text" maxlength="20" placeholder="Taxallusingiz" data-i18n-placeholder="lb_nick_placeholder"
+            style="flex:1; min-width:0; background:rgba(255,255,255,.05); border:1px solid rgba(139,107,255,.4); border-radius:10px; padding:10px 12px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:.95rem;">
+          <button class="shop-btn" id="lbSaveNickBtn" data-i18n="lb_save_btn">SAQLASH</button>
+        </div>
+        <button class="shop-btn" id="lbSignOutBtn" data-i18n="lb_signout_btn">CHIQISH</button>
+      </div>
+
+      <div id="lbStatus" style="font-size:.8rem; color:var(--muted); margin:0 0 12px; min-height:1.2em;"></div>
+      <div id="lbList" style="display:flex; flex-direction:column; gap:6px; text-align:left; max-height:38vh; overflow-y:auto;"></div>
+      <button class="cta" id="closeLeaderboardBtn" style="margin-top:20px;" data-i18n="close_btn">ORQAGA</button>
+    </div>
+  </div>
+
+  <div class="overlay hidden" id="authOverlay">
+    <div class="card">
+      <p class="eyebrow" data-i18n="auth_eyebrow">Hisob</p>
+      <h1 class="title glow-title" style="font-size:clamp(1.4rem,6vw,1.9rem);" data-i18n="auth_title">KIRISH</h1>
+      <button class="cta" id="googleAuthBtn" style="background:#fff; color:#1f1f1f; margin-bottom:14px;" data-i18n="auth_google_btn">GOOGLE ORQALI KIRISH</button>
+      <p style="font-size:.72rem; color:var(--muted); margin:0 0 16px;" data-i18n="auth_or">yoki email bilan</p>
+      <input id="authEmail" type="email" placeholder="Email" data-i18n-placeholder="auth_email_placeholder"
+        style="width:100%; margin:0 0 10px; background:rgba(255,255,255,.05); border:1px solid rgba(139,107,255,.4); border-radius:10px; padding:12px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:.95rem;">
+      <input id="authPassword" type="password" placeholder="Parol" data-i18n-placeholder="auth_password_placeholder"
+        style="width:100%; margin:0 0 16px; background:rgba(255,255,255,.05); border:1px solid rgba(139,107,255,.4); border-radius:10px; padding:12px; color:var(--text); font-family:'Rajdhani',sans-serif; font-size:.95rem;">
+      <div id="authStatus" style="font-size:.78rem; color:var(--muted); margin:0 0 14px; min-height:1.2em;"></div>
+      <button class="cta" id="authSignInBtn" style="margin-bottom:10px;" data-i18n="auth_signin_btn">KIRISH</button>
+      <button class="cta" id="authSignUpBtn" style="background:rgba(255,255,255,.08); color:var(--text); box-shadow:none; margin-bottom:12px;" data-i18n="auth_signup_btn">RO'YXATDAN O'TISH</button>
+      <button class="cta" id="closeAuthBtn" style="background:transparent; color:var(--muted); box-shadow:none; border:1px solid rgba(255,255,255,.14);" data-i18n="close_btn">ORQAGA</button>
+    </div>
+  </div>
 </div>
 
 <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.js"></script>
 <script>
 (function(){
   "use strict";
@@ -434,6 +479,90 @@
   var ownedSkins = loadOwned();
   var selectedSkin = loadSkin();
 
+  /* ===================== account + leaderboard (Supabase) ===================== */
+  var NICK_KEY = "neon-orbit-nick";
+  function loadNick(){ try{ return localStorage.getItem(NICK_KEY) || ""; }catch(e){ return ""; } }
+  function saveNick(v){ try{ localStorage.setItem(NICK_KEY, v); }catch(e){} }
+  var nickname = loadNick();
+
+  var SUPABASE_URL = "https://habflwaewospaoegtcyk.supabase.co";
+  var SUPABASE_ANON_KEY = "sb_publishable_GaPc3p9L_jondBaK5oEOCw_uku2Qc6k";
+  var sb = (window.supabase && window.supabase.createClient)
+    ? window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+    : null;
+  var sbUser = null; // current Supabase auth user, or null when signed out
+
+  if(sb){
+    sb.auth.getSession().then(function(res){
+      sbUser = (res && res.data && res.data.session && res.data.session.user) || null;
+      updateAuthUI();
+    });
+    sb.auth.onAuthStateChange(function(_event, session){
+      sbUser = (session && session.user) || null;
+      updateAuthUI();
+    });
+  }
+
+  function signUp(email, password){
+    return sb.auth.signUp({ email:email, password:password });
+  }
+  function signIn(email, password){
+    return sb.auth.signInWithPassword({ email:email, password:password });
+  }
+  function signInGoogle(){
+    return sb.auth.signInWithOAuth({ provider:"google", options:{ redirectTo: window.location.href.split("#")[0] } });
+  }
+  function signOutUser(){
+    return sb.auth.signOut();
+  }
+
+  function submitScore(finalScore, finalDistance){
+    if(!sb || !sbUser) return; // must be logged in to appear on the leaderboard
+    var nick = (nickname || sbUser.email.split("@")[0] || "player").trim().slice(0,20);
+    sb.from("scores").insert({
+      user_id: sbUser.id,
+      nickname: nick,
+      score: Math.max(0, Math.floor(finalScore)),
+      distance: Math.max(0, finalDistance)
+    }).then(function(res){
+      if(res.error) console.warn("score submit failed:", res.error.message);
+    });
+  }
+
+  function renderLeaderboard(){
+    var listEl = document.getElementById("lbList");
+    var statusEl = document.getElementById("lbStatus");
+    if(!sb){
+      statusEl.textContent = t("lb_unavailable");
+      return;
+    }
+    statusEl.textContent = t("lb_loading");
+    listEl.innerHTML = "";
+    sb.from("scores")
+      .select("nickname, score")
+      .order("score", { ascending:false })
+      .limit(100)
+      .then(function(res){
+        if(res.error){ statusEl.textContent = t("lb_unavailable"); return; }
+        var rows = res.data || [];
+        // keep only each player's best row, client-side, then take top 10
+        var best = {};
+        rows.forEach(function(r){
+          if(!best[r.nickname] || r.score > best[r.nickname]) best[r.nickname] = r.score;
+        });
+        var top = Object.keys(best).map(function(n){ return { nickname:n, score:best[n] }; })
+          .sort(function(a,b){ return b.score - a.score; }).slice(0, 10);
+        if(!top.length){ statusEl.textContent = t("lb_empty"); return; }
+        statusEl.textContent = "";
+        top.forEach(function(row, i){
+          var div = document.createElement("div");
+          div.className = "score-row";
+          div.innerHTML = '<span class="label">#' + (i+1) + " " + row.nickname.replace(/[<>&]/g, function(c){ return {"<":"&lt;",">":"&gt;","&":"&amp;"}[c]; }) + '</span><span class="value">' + row.score + '</span>';
+          listEl.appendChild(div);
+        });
+      });
+  }
+
   /* ===================== i18n ===================== */
   var LANGS = ["uz", "en", "ru"];
   var I18N = {
@@ -457,7 +586,17 @@
       skin_ice: "Muz shari", skin_fire: "Olov shari", skin_earth: "Sayyora Yer", skin_saturn: "Halqali sayyora",
       pause_eyebrow: "Pauza", pause_title: "TO'XTATILDI", resume_btn: "DAVOM ETTIRISH", menu_btn: "BOSH MENYU",
       ad_eyebrow: "Reklama", ad_line1: "Bu yerda reklama chiqadi", ad_line2: "AdSense ulanganda shu joy almashadi",
-      ad_skip: "O'TKAZIB YUBORISH", ad_continue: "DAVOM ETISH"
+      ad_skip: "O'TKAZIB YUBORISH", ad_continue: "DAVOM ETISH",
+      leaderboard_btn: "REYTING", lb_eyebrow: "Dunyo reytingi", lb_title: "TOP O'YINCHILAR",
+      lb_nick_placeholder: "Taxallusingiz", lb_save_btn: "SAQLASH",
+      lb_loading: "Yuklanmoqda...", lb_empty: "Hali hech kim ball qo'shmagan.",
+      lb_unavailable: "Reyting hozircha mavjud emas.", lb_nick_saved: "Taxallus saqlandi!",
+      lb_login_prompt: "Reytingda ko'rinish uchun hisobga kiring.", lb_login_btn: "KIRISH / RO'YXATDAN O'TISH",
+      lb_signed_in_as: "Kirgan hisob:", lb_signout_btn: "CHIQISH",
+      auth_eyebrow: "Hisob", auth_title: "KIRISH", auth_google_btn: "GOOGLE ORQALI KIRISH", auth_or: "yoki email bilan",
+      auth_email_placeholder: "Email", auth_password_placeholder: "Parol",
+      auth_signin_btn: "KIRISH", auth_signup_btn: "RO'YXATDAN O'TISH",
+      auth_missing_fields: "Email va parolni kiriting.", auth_confirm_email: "Emailingizni tasdiqlash havolasi yuborildi."
     },
     en: {
       eyebrow: "Online arcade - 3D",
@@ -479,7 +618,17 @@
       skin_ice: "Ice Ball", skin_fire: "Fire Ball", skin_earth: "Planet Earth", skin_saturn: "Ringed Planet",
       pause_eyebrow: "Paused", pause_title: "PAUSED", resume_btn: "RESUME", menu_btn: "MAIN MENU",
       ad_eyebrow: "Advertisement", ad_line1: "Your ad will appear here", ad_line2: "Swap in once AdSense is connected",
-      ad_skip: "SKIP", ad_continue: "CONTINUE"
+      ad_skip: "SKIP", ad_continue: "CONTINUE",
+      leaderboard_btn: "RANKING", lb_eyebrow: "World ranking", lb_title: "TOP PLAYERS",
+      lb_nick_placeholder: "Your nickname", lb_save_btn: "SAVE",
+      lb_loading: "Loading...", lb_empty: "No scores submitted yet.",
+      lb_unavailable: "Leaderboard is unavailable right now.", lb_nick_saved: "Nickname saved!",
+      lb_login_prompt: "Sign in to appear on the leaderboard.", lb_login_btn: "SIGN IN / REGISTER",
+      lb_signed_in_as: "Signed in as:", lb_signout_btn: "SIGN OUT",
+      auth_eyebrow: "Account", auth_title: "SIGN IN", auth_google_btn: "CONTINUE WITH GOOGLE", auth_or: "or with email",
+      auth_email_placeholder: "Email", auth_password_placeholder: "Password",
+      auth_signin_btn: "SIGN IN", auth_signup_btn: "REGISTER",
+      auth_missing_fields: "Enter an email and password.", auth_confirm_email: "A confirmation link was sent to your email."
     },
     ru: {
       eyebrow: "Онлайн-аркада - 3D",
@@ -501,7 +650,17 @@
       skin_ice: "Ледяной шар", skin_fire: "Огненный шар", skin_earth: "Планета Земля", skin_saturn: "Планета с кольцом",
       pause_eyebrow: "Пауза", pause_title: "ПАУЗА", resume_btn: "ПРОДОЛЖИТЬ", menu_btn: "ГЛАВНОЕ МЕНЮ",
       ad_eyebrow: "Реклама", ad_line1: "Здесь появится реклама", ad_line2: "Заменится после подключения AdSense",
-      ad_skip: "ПРОПУСТИТЬ", ad_continue: "ПРОДОЛЖИТЬ"
+      ad_skip: "ПРОПУСТИТЬ", ad_continue: "ПРОДОЛЖИТЬ",
+      leaderboard_btn: "РЕЙТИНГ", lb_eyebrow: "Мировой рейтинг", lb_title: "ТОП ИГРОКОВ",
+      lb_nick_placeholder: "Ваш никнейм", lb_save_btn: "СОХРАНИТЬ",
+      lb_loading: "Загрузка...", lb_empty: "Пока никто не отправил результат.",
+      lb_unavailable: "Рейтинг сейчас недоступен.", lb_nick_saved: "Никнейм сохранён!",
+      lb_login_prompt: "Войдите, чтобы попасть в рейтинг.", lb_login_btn: "ВОЙТИ / РЕГИСТРАЦИЯ",
+      lb_signed_in_as: "Вы вошли как:", lb_signout_btn: "ВЫЙТИ",
+      auth_eyebrow: "Аккаунт", auth_title: "ВХОД", auth_google_btn: "ВОЙТИ ЧЕРЕЗ GOOGLE", auth_or: "или через email",
+      auth_email_placeholder: "Email", auth_password_placeholder: "Пароль",
+      auth_signin_btn: "ВОЙТИ", auth_signup_btn: "РЕГИСТРАЦИЯ",
+      auth_missing_fields: "Введите email и пароль.", auth_confirm_email: "Ссылка для подтверждения отправлена на почту."
     }
   };
   function detectDeviceLang(){
@@ -1289,6 +1448,66 @@
   var shopOverlay = document.getElementById("shopOverlay");
   var shopReturnOverlay = null;
 
+  var leaderboardOverlay = document.getElementById("leaderboardOverlay");
+  var authOverlay = document.getElementById("authOverlay");
+
+  function updateAuthUI(){
+    var loggedOut = document.getElementById("lbLoggedOut");
+    var loggedIn = document.getElementById("lbLoggedIn");
+    if(!loggedOut || !loggedIn) return; // DOM not ready yet
+    if(sbUser){
+      loggedOut.classList.add("hidden");
+      loggedIn.classList.remove("hidden");
+      document.getElementById("lbUserEmail").textContent = sbUser.email || "";
+      document.getElementById("lbNickInput").value = nickname || (sbUser.email ? sbUser.email.split("@")[0] : "");
+    } else {
+      loggedOut.classList.remove("hidden");
+      loggedIn.classList.add("hidden");
+    }
+  }
+
+  function openLeaderboard(){
+    updateAuthUI();
+    leaderboardOverlay.classList.remove("hidden");
+    renderLeaderboard();
+  }
+  function closeLeaderboard(){ leaderboardOverlay.classList.add("hidden"); }
+  function saveNicknameFromInput(){
+    var v = document.getElementById("lbNickInput").value.trim().slice(0,20);
+    nickname = v;
+    saveNick(v);
+    var statusEl = document.getElementById("lbStatus");
+    if(statusEl && v) statusEl.textContent = t("lb_nick_saved");
+  }
+
+  function openAuth(){
+    document.getElementById("authStatus").textContent = "";
+    leaderboardOverlay.classList.add("hidden");
+    authOverlay.classList.remove("hidden");
+  }
+  function closeAuth(){
+    authOverlay.classList.add("hidden");
+    openLeaderboard();
+  }
+
+  function handleAuthSubmit(mode){
+    var email = document.getElementById("authEmail").value.trim();
+    var password = document.getElementById("authPassword").value;
+    var statusEl = document.getElementById("authStatus");
+    if(!sb){ statusEl.textContent = t("lb_unavailable"); return; }
+    if(!email || !password){ statusEl.textContent = t("auth_missing_fields"); return; }
+    statusEl.textContent = t("lb_loading");
+    var action = mode === "signup" ? signUp(email, password) : signIn(email, password);
+    action.then(function(res){
+      if(res.error){ statusEl.textContent = res.error.message; return; }
+      if(mode === "signup" && !(res.data && res.data.session)){
+        statusEl.textContent = t("auth_confirm_email");
+        return;
+      }
+      closeAuth();
+    });
+  }
+
   function renderShop(){
     skinGrid.innerHTML = "";
     SKINS.forEach(function(skin){
@@ -1428,6 +1647,9 @@
     document.querySelectorAll("[data-i18n]").forEach(function(el){
       el.textContent = t(el.getAttribute("data-i18n"));
     });
+    document.querySelectorAll("[data-i18n-placeholder]").forEach(function(el){
+      el.placeholder = t(el.getAttribute("data-i18n-placeholder"));
+    });
     var langBtn = document.getElementById("langBtn");
     if(langBtn) langBtn.textContent = lang.toUpperCase();
     updateBestTag();
@@ -1490,6 +1712,7 @@
     document.getElementById("finalCoinsGained").textContent = "+" + (coins - runStartCoins);
     updateBestTag();
     updateCoinDisplays();
+    submitScore(finalScore, distance);
     showAd(function(){ overOverlay.classList.remove("hidden"); });
   }
 
@@ -1559,6 +1782,18 @@
   document.getElementById("openShopBtn").addEventListener("click", function(){ openShop(startOverlay); });
   document.getElementById("openShopBtn2").addEventListener("click", function(){ openShop(overOverlay); });
   document.getElementById("closeShopBtn").addEventListener("click", closeShop);
+  document.getElementById("openLeaderboardBtn").addEventListener("click", openLeaderboard);
+  document.getElementById("closeLeaderboardBtn").addEventListener("click", closeLeaderboard);
+  document.getElementById("lbSaveNickBtn").addEventListener("click", saveNicknameFromInput);
+  document.getElementById("lbOpenAuthBtn").addEventListener("click", openAuth);
+  document.getElementById("lbSignOutBtn").addEventListener("click", function(){ signOutUser().then(function(){ renderLeaderboard(); }); });
+  document.getElementById("closeAuthBtn").addEventListener("click", closeAuth);
+  document.getElementById("authSignInBtn").addEventListener("click", function(){ handleAuthSubmit("signin"); });
+  document.getElementById("authSignUpBtn").addEventListener("click", function(){ handleAuthSubmit("signup"); });
+  document.getElementById("googleAuthBtn").addEventListener("click", function(){
+    if(!sb) return;
+    signInGoogle();
+  });
   document.getElementById("langBtn").addEventListener("click", cycleLang);
   pauseBtn.addEventListener("click", pauseGame);
   document.getElementById("resumeBtn").addEventListener("click", resumeGame);
